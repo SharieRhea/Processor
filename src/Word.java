@@ -3,6 +3,9 @@ public class Word {
 
     public Word() {
         array = new Bit[32];
+        for (int i = 0; i < 32; i++) {
+            array[i] = new Bit(false);
+        }
     }
 
     public Bit getBit(int index) {
@@ -80,18 +83,21 @@ public class Word {
     // Used for testing.
     public int getSigned() {
          int returnValue = 0;
-         boolean negative = false;
          // Negative number
          if (array[0].getValue()) {
              Word temporary = this.not();
-             negative = true;
+             for (int i = 0; i < 32; i++) {
+                 if (temporary.getBit(i).getValue())
+                     returnValue += (int) Math.pow(2, 32 - 1 - i);
+             }
+             return (returnValue + 1) * -1;
          }
+
+         // Positive number
          for (int i = 0; i < 32; i++) {
              if (array[i].getValue())
                  returnValue += (int) Math.pow(2, 32 - 1 - i);
          }
-         if (negative)
-             return (returnValue + 1) * -1;
          return returnValue;
     }
 
@@ -103,15 +109,28 @@ public class Word {
 
     // Used for testing.
     public void set(int value) {
+        // todo: change this edge case? clean up this whole function
+        if (value == -2147483648) {
+            for (int i = 0; i < 32; i++)  {
+                array[i] = new Bit(true);
+            }
+            return;
+        }
+        boolean negativeFlag = false;
+        if (value < 0) {
+            value = (value * -1) - 1;
+            negativeFlag = true;
+        }
         for (int i = 31; i >= 0; i--) {
-            if (value / (int) Math.pow(2, i) == 1) {
+            if (value / Math.pow(2, i) >= 1) {
                 value -= (int) Math.pow(2, i);
                 array[31 - i] = new Bit(true);
-            }
-            else {
+            } else {
                 array[31 - i] = new Bit(false);
             }
         }
+        if (negativeFlag)
+            this.copy(this.not());
     }
 
     @Override

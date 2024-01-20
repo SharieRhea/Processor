@@ -36,7 +36,7 @@ public class Bit {
     public Bit or(Bit other) {
         if (value)
             return new Bit(true);
-        else if (other.getValue())
+        if (other.getValue())
             return new Bit(true);
         return new Bit(false);
     }
