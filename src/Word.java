@@ -64,7 +64,7 @@ public class Word {
         for (int i = 32 - amount; i < 32; i ++) {
             returnValue.setBit(i, new Bit(false));
         }
-        for (int i = 0; i < amount; i++) {
+        for (int i = 0; i < 32 - amount; i++) {
             returnValue.setBit(i, array[i + amount]);
         }
         return returnValue;
@@ -109,14 +109,8 @@ public class Word {
 
     // Used for testing.
     public void set(int value) {
-        // todo: change this edge case? clean up this whole function
-        if (value == -2147483648) {
-            for (int i = 0; i < 32; i++)  {
-                array[i] = new Bit(true);
-            }
-            return;
-        }
         boolean negativeFlag = false;
+        // If negative, convert 2's complement by turning positive and subtracting 1
         if (value < 0) {
             value = (value * -1) - 1;
             negativeFlag = true;
@@ -129,8 +123,12 @@ public class Word {
                 array[31 - i] = new Bit(false);
             }
         }
-        if (negativeFlag)
-            this.copy(this.not());
+        if (negativeFlag) {
+            // Invert entire result
+            for (int i = 0; i < 32; i++) {
+                array[i] = array[i].not();
+            }
+        }
     }
 
     @Override

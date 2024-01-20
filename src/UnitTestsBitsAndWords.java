@@ -447,6 +447,67 @@ public class UnitTestsBitsAndWords {
     }
 
     //todo left and right shift
+    @Test
+    public void wordShiftRightTrue() {
+        Word word = new Word();
+        for (int i = 0; i < 32; i++) {
+            word.setBit(i, new Bit(true));
+        }
+        word = word.rightShift(8);
+        for (int i = 0; i < 32; i++) {
+            if (i < 8)
+                assertFalse(word.getBit(i).getValue());
+            else
+                assertTrue(word.getBit(i).getValue());
+        }
+    }
+
+    @Test
+    public void wordShiftRightMixed() {
+        Word word = new Word();
+        word.setBit(0, new Bit(true));
+        word.setBit(5, new Bit(true));
+        word.setBit(6, new Bit(true));
+        word.setBit(30, new Bit(true));
+        word = word.rightShift(17);
+        for (int i = 0; i < 32; i++) {
+            if (i == 17 || i == 22 || i == 23)
+                assertTrue(word.getBit(i).getValue());
+            else
+                assertFalse(word.getBit(i).getValue());
+        }
+    }
+
+    @Test
+    public void wordShiftLeftTrue() {
+        Word word = new Word();
+        for (int i = 0; i < 32; i++) {
+            word.setBit(i, new Bit(true));
+        }
+        word = word.leftShift(8);
+        for (int i = 0; i < 32; i++) {
+            if (i > 23)
+                assertFalse(word.getBit(i).getValue());
+            else
+                assertTrue(word.getBit(i).getValue());
+        }
+    }
+
+    @Test
+    public void wordShiftLeftMixed() {
+        Word word = new Word();
+        word.setBit(0, new Bit(true));
+        word.setBit(5, new Bit(true));
+        word.setBit(6, new Bit(true));
+        word.setBit(30, new Bit(true));
+        word = word.leftShift(17);
+        for (int i = 0; i < 32; i++) {
+            if (i == 13)
+                assertTrue(word.getBit(i).getValue());
+            else
+                assertFalse(word.getBit(i).getValue());
+        }
+    }
 
     @Test
     public void wordGetUnsignedMax() {
@@ -566,6 +627,7 @@ public class UnitTestsBitsAndWords {
     public void wordSetMax() {
         Word word = new Word();
         word.set(2147483647);
+        assertFalse(word.getBit(0).getValue());
         for (int i = 1; i < 32; i++) {
             assertTrue(word.getBit(i).getValue());
         }
@@ -575,8 +637,9 @@ public class UnitTestsBitsAndWords {
     public void wordSetMin() {
         Word word = new Word();
         word.set(-2147483648);
-        for (int i = 0; i < 32; i++) {
-            assertTrue(word.getBit(i).getValue());
+        assertTrue(word.getBit(0).getValue());
+        for (int i = 1; i < 32; i++) {
+            assertFalse(word.getBit(i).getValue());
         }
     }
 
@@ -614,6 +677,15 @@ public class UnitTestsBitsAndWords {
                 assertFalse(word.getBit(i).getValue());
             else
                 assertTrue(word.getBit(i).getValue());
+        }
+    }
+
+    @Test
+    public void wordSet0() {
+        Word word = new Word();
+        word.set(0);
+        for (int i = 0; i < 32; i++) {
+            assertFalse(word.getBit(i).getValue());
         }
     }
 }
