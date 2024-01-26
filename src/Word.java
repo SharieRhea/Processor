@@ -1,6 +1,8 @@
+
 public class Word {
     private Bit[] array;
 
+    // Default constructor creates a word filled with 0s
     public Word() {
         array = new Bit[32];
         for (int i = 0; i < 32; i++) {
@@ -48,6 +50,7 @@ public class Word {
         return returnValue;
     }
 
+    // This implementation of right shift is a logical shift (no sign extend)
     public Word rightShift(int amount) {
         Word returnValue = new Word();
         for (int i = 0; i < amount; i ++) {
