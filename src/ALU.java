@@ -5,6 +5,14 @@ public class ALU {
     private Bit carryOut1;
     private Bit carryOut2;
 
+    public ALU() {
+        operand1 = new Word();
+        operand2 = new Word();
+        result = new Word();
+        carryOut1 = new Bit();
+        carryOut2 = new Bit();
+    }
+
     public void doOperation(Bit[] operation) {
         // check what the operation is, helper method?
         switch (getOperation(operation)) {
@@ -16,17 +24,16 @@ public class ALU {
                 result.copy(operand1.xor(operand2));
             case NOT ->
                 result.copy(operand1.not());
-            // TODO
-            /*case LEFT_SHIFT ->
-                result.copy(operand1.leftShift()); // TODO: need to get int value of lowest 5 bits of operand2 here));
+            case LEFT_SHIFT ->
+                result.copy(operand1.leftShift(get5BitUnsigned(operand2)));
             case RIGHT_SHIFT ->
-                result.copy(operand1.rightShift()); // TODO: need to get int value of lowest 5 bits of operand2 here));
+                result.copy(operand1.rightShift(get5BitUnsigned(operand2)));
             case ADD ->
-                // add
+                result.copy(add(operand1, operand2));
             case SUBTRACT ->
-                // subtract
+                result.copy(subtract(operand1, operand2));
             case MULTIPLY ->
-                // multiply*/
+                result.copy(multiply(operand1, operand2));
         }
     }
 
@@ -41,9 +48,81 @@ public class ALU {
     public Bit add4(Bit bit1, Bit bit2, Bit bit3, Bit bit4, Bit carryIn) {
         // xor each bit to find the sum
         var sum = bit1.xor(bit2).xor(bit3).xor(bit4).xor(carryIn);
-        carryOut1 =    ((bit1.xor(bit2)).and(bit3)).xor(bit1.and(bit2)).xor(bit1.xor(bit2).xor(bit3).and(bit4)).xor((bit1.xor(bit2).xor(bit3).xor(bit4)).and(carryIn));
+        // For a graphical representation of the logic behind finding carry values, see https://drive.google.com/file/d/1P2lRv29yRQq-qQhy7j8viq3t04ESPN9T/view?usp=sharing
+        carryOut1 = ((bit1.xor(bit2)).and(bit3)).xor(bit1.and(bit2)).xor(bit1.xor(bit2).xor(bit3).and(bit4)).xor((bit1.xor(bit2).xor(bit3).xor(bit4)).and(carryIn));
         carryOut2 = ((bit1.xor(bit2)).and(bit3)).xor(bit1.and(bit2)).and(bit1.xor(bit2).xor(bit3).and(bit4)).or(((bit1.xor(bit2).xor(bit3).xor(bit4)).and(carryIn)).and(((bit1.xor(bit2)).and(bit3)).xor(bit1.and(bit2)).xor(bit1.xor(bit2).xor(bit3).and(bit4))));
         return sum;
+    }
+
+    private Word add(Word operand1, Word operand2) {
+        // Reset carryOut to ensure it's empty
+        carryOut1 = new Bit();
+        Word returnValue = new Word();
+        for (int i = 31; i >= 0; i--) {
+            returnValue.setBit(i, add2(operand1.getBit(i), operand2.getBit(i), carryOut1));
+        }
+        return returnValue;
+    }
+
+    public Word add4Way(Word operand1, Word operand2, Word operand3, Word operand4) {
+        // Reset carryOut to ensure it's empty
+        carryOut1 = new Bit();
+        carryOut2 = new Bit();
+        Word returnValue = new Word();
+        for (int i = 31; i >= 0; i--) {
+            // Hold onto the carry2 for adding later
+            Bit storeCarry = carryOut2;
+
+            // Do the addition
+            returnValue.setBit(i, add4(operand1.getBit(i), operand2.getBit(i), operand3.getBit(i), operand4.getBit(i), carryOut1));
+
+            // Calculate and store these, since the adds themselves will set values
+            Bit finalCarry1 = add2(carryOut1, storeCarry, new Bit());
+            Bit finalCarry2 = add2(carryOut2, carryOut1, new Bit());
+
+            // Update to the final values
+            carryOut1 = finalCarry1;
+            carryOut2 = finalCarry2;
+        }
+        return returnValue;
+    }
+
+    private Word subtract(Word operand1, Word operand2) {
+        // Reset carry
+        carryOut1 = new Bit();
+        // convert operand2 to be negative using two's complement
+        Word one = new Word();
+        one.setBit(31, new Bit(true));
+        Word negativeOperand2 = add(operand2.not(), one);
+
+        // a - b = a + -b
+        return add(operand1, negativeOperand2);
+    }
+
+    private Word multiply(Word operand1, Word operand2) {
+        Word[] round1Results = new Word[8];
+        for (int i = 31; i >= 0; i -= 4) {
+            Word number1 = operand1.getBit(i).getValue() ? operand2.leftShift(31 - i) : new Word();
+            Word number2 = operand1.getBit(i - 1).getValue() ? operand2.leftShift(31 - i + 1) : new Word();
+            Word number3 = operand1.getBit(i - 2).getValue() ? operand2.leftShift(31 - i + 2) : new Word();
+            Word number4 = operand1.getBit(i - 3).getValue() ? operand2.leftShift(31 - i + 3) : new Word();
+
+            round1Results[((i + 1) / 4) - 1] = add4Way(number1, number2, number3, number4);
+        }
+
+        Word round2One = add4Way(round1Results[0], round1Results[1], round1Results[2], round1Results[3]);
+        Word round2Two = add4Way(round1Results[4], round1Results[5], round1Results[6], round1Results[7]);
+
+        return add(round2One, round2Two);
+    }
+
+    private int get5BitUnsigned(Word operand) {
+        int returnValue = 0;
+        for (int i = 27; i < 32; i++) {
+            if (operand.getBit(i).getValue())
+                returnValue += (int) Math.pow(2, 32 - 1 - i);
+        }
+        return returnValue;
     }
 
     private enum Operation {
