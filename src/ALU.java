@@ -16,24 +16,15 @@ public class ALU {
     public void doOperation(Bit[] operation) {
         // check what the operation is, helper method?
         switch (getOperation(operation)) {
-            case AND ->
-                result.copy(operand1.and(operand2));
-            case OR ->
-                result.copy(operand1.or(operand2));
-            case XOR ->
-                result.copy(operand1.xor(operand2));
-            case NOT ->
-                result.copy(operand1.not());
-            case LEFT_SHIFT ->
-                result.copy(operand1.leftShift(get5BitUnsigned(operand2)));
-            case RIGHT_SHIFT ->
-                result.copy(operand1.rightShift(get5BitUnsigned(operand2)));
-            case ADD ->
-                result.copy(add(operand1, operand2));
-            case SUBTRACT ->
-                result.copy(subtract(operand1, operand2));
-            case MULTIPLY ->
-                result.copy(multiply(operand1, operand2));
+            case AND -> result.copy(operand1.and(operand2));
+            case OR -> result.copy(operand1.or(operand2));
+            case XOR -> result.copy(operand1.xor(operand2));
+            case NOT -> result.copy(operand1.not());
+            case LEFT_SHIFT -> result.copy(operand1.leftShift(get5BitUnsigned(operand2)));
+            case RIGHT_SHIFT -> result.copy(operand1.rightShift(get5BitUnsigned(operand2)));
+            case ADD -> result.copy(add(operand1, operand2));
+            case SUBTRACT -> result.copy(subtract(operand1, operand2));
+            case MULTIPLY -> result.copy(multiply(operand1, operand2));
         }
     }
 
@@ -64,7 +55,7 @@ public class ALU {
         return returnValue;
     }
 
-    public Word add4Way(Word operand1, Word operand2, Word operand3, Word operand4) {
+    private Word add4Way(Word operand1, Word operand2, Word operand3, Word operand4) {
         // Reset carryOut to ensure it's empty
         carryOut1 = new Bit();
         carryOut2 = new Bit();
@@ -76,11 +67,9 @@ public class ALU {
             // Do the addition
             returnValue.setBit(i, add4(operand1.getBit(i), operand2.getBit(i), operand3.getBit(i), operand4.getBit(i), carryOut1));
 
-            // Calculate and store these, since the adds themselves will set values
+            // Move each carry over to prepare for next step, adding in any carry from previous steps if needed
             Bit finalCarry1 = add2(carryOut1, storeCarry, new Bit());
             Bit finalCarry2 = add2(carryOut2, carryOut1, new Bit());
-
-            // Update to the final values
             carryOut1 = finalCarry1;
             carryOut2 = finalCarry2;
         }
@@ -101,6 +90,7 @@ public class ALU {
 
     private Word multiply(Word operand1, Word operand2) {
         Word[] round1Results = new Word[8];
+        // Round 1: use shift and bit values to determine the 32 numbers to add together, summing 4 at a time as we go
         for (int i = 31; i >= 0; i -= 4) {
             Word number1 = operand1.getBit(i).getValue() ? operand2.leftShift(31 - i) : new Word();
             Word number2 = operand1.getBit(i - 1).getValue() ? operand2.leftShift(31 - i + 1) : new Word();
@@ -116,6 +106,7 @@ public class ALU {
         return add(round2One, round2Two);
     }
 
+    // Used for shifting, only account for 5 bits as 2^5 = 32, the length of our word
     private int get5BitUnsigned(Word operand) {
         int returnValue = 0;
         for (int i = 27; i < 32; i++) {
@@ -123,10 +114,6 @@ public class ALU {
                 returnValue += (int) Math.pow(2, 32 - 1 - i);
         }
         return returnValue;
-    }
-
-    private enum Operation {
-        AND, OR, XOR, NOT, LEFT_SHIFT, RIGHT_SHIFT, ADD, SUBTRACT, MULTIPLY
     }
 
     private Operation getOperation(Bit[] operation) {
@@ -158,5 +145,9 @@ public class ALU {
     // Used for testing
     public Bit getCarryOut2() {
         return carryOut2;
+    }
+
+    private enum Operation {
+        AND, OR, XOR, NOT, LEFT_SHIFT, RIGHT_SHIFT, ADD, SUBTRACT, MULTIPLY
     }
 }
