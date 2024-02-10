@@ -1,8 +1,12 @@
 public class Bit {
     private boolean value;
 
-    public Bit(Boolean value) {
+    public Bit(boolean value) {
         set(value);
+    }
+
+    public Bit() {
+        value = false;
     }
 
     public void set(boolean value) {
