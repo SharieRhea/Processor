@@ -14,7 +14,6 @@ public class ALU {
     }
 
     public void doOperation(Bit[] operation) {
-        // check what the operation is, helper method?
         switch (getOperation(operation)) {
             case AND -> result.copy(operand1.and(operand2));
             case OR -> result.copy(operand1.or(operand2));
@@ -22,7 +21,7 @@ public class ALU {
             case NOT -> result.copy(operand1.not());
             case LEFT_SHIFT -> result.copy(operand1.leftShift(get5BitUnsigned(operand2)));
             case RIGHT_SHIFT -> result.copy(operand1.rightShift(get5BitUnsigned(operand2)));
-            case ADD -> result.copy(add(operand1, operand2));
+            case ADD -> result.copy(add2Words(operand1, operand2));
             case SUBTRACT -> result.copy(subtract(operand1, operand2));
             case MULTIPLY -> result.copy(multiply(operand1, operand2));
         }
@@ -45,7 +44,7 @@ public class ALU {
         return sum;
     }
 
-    private Word add(Word operand1, Word operand2) {
+    private Word add2Words(Word operand1, Word operand2) {
         // Reset carryOut to ensure it's empty
         carryOut1 = new Bit();
         Word returnValue = new Word();
@@ -55,7 +54,7 @@ public class ALU {
         return returnValue;
     }
 
-    private Word add4Way(Word operand1, Word operand2, Word operand3, Word operand4) {
+    private Word add4Words(Word operand1, Word operand2, Word operand3, Word operand4) {
         // Reset carryOut to ensure it's empty
         carryOut1 = new Bit();
         carryOut2 = new Bit();
@@ -82,10 +81,10 @@ public class ALU {
         // convert operand2 to be negative using two's complement
         Word one = new Word();
         one.setBit(31, new Bit(true));
-        Word negativeOperand2 = add(operand2.not(), one);
+        Word negativeOperand2 = add2Words(operand2.not(), one);
 
         // a - b = a + -b
-        return add(operand1, negativeOperand2);
+        return add2Words(operand1, negativeOperand2);
     }
 
     private Word multiply(Word operand1, Word operand2) {
@@ -97,13 +96,13 @@ public class ALU {
             Word number3 = operand1.getBit(i - 2).getValue() ? operand2.leftShift(31 - i + 2) : new Word();
             Word number4 = operand1.getBit(i - 3).getValue() ? operand2.leftShift(31 - i + 3) : new Word();
 
-            round1Results[((i + 1) / 4) - 1] = add4Way(number1, number2, number3, number4);
+            round1Results[((i + 1) / 4) - 1] = add4Words(number1, number2, number3, number4);
         }
 
-        Word round2One = add4Way(round1Results[0], round1Results[1], round1Results[2], round1Results[3]);
-        Word round2Two = add4Way(round1Results[4], round1Results[5], round1Results[6], round1Results[7]);
+        Word round2One = add4Words(round1Results[0], round1Results[1], round1Results[2], round1Results[3]);
+        Word round2Two = add4Words(round1Results[4], round1Results[5], round1Results[6], round1Results[7]);
 
-        return add(round2One, round2Two);
+        return add2Words(round2One, round2Two);
     }
 
     // Used for shifting, only account for 5 bits as 2^5 = 32, the length of our word
