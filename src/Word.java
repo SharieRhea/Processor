@@ -72,6 +72,16 @@ public class Word {
         return returnValue;
     }
 
+    public Word increment() {
+        Bit carry = new Bit(true);
+        Word returnValue = new Word();
+        for (int i = 31; i >= 0; i--) {
+            returnValue.setBit(i, carry.xor(getBit(i)));
+            carry = carry.and(getBit(i));
+        }
+        return returnValue;
+    }
+
     // Used for testing.
     public long getUnsigned() {
         long returnValue = 0;
