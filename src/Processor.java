@@ -1,4 +1,5 @@
 public class Processor {
+    // programCounter begins at 0
     private Word programCounter = new Word();
     private Word stackPointer = new Word();
     private Word currentInstruction;

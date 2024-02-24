@@ -4,9 +4,9 @@ public class MainMemory {
     public static Word read(Word address) {
         int index = (int) address.getUnsigned();
         Word returnVal = new Word();
-        // Memory may not have been initialized, in that case return an empty word
         if (memory[index] != null)
             returnVal.copy(memory[index]);
+        // Memory may not have been initialized, in that case return an empty word
         return returnVal;
     }
 
