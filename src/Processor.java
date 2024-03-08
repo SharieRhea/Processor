@@ -75,16 +75,21 @@ public class Processor {
     private void store() {
         Word instructionFormat = currentInstruction.and(INSTRUCTION_FORMAT_MASK);
         Word operation = currentInstruction.and(OPERATION_MASK).rightShift(2);
+        // Math operations
         if (!operation.getBit(29).getValue() && !operation.getBit(30).getValue() && !operation.getBit(31).getValue()) {
-            if (instructionFormat.getBit(30).getValue() || instructionFormat.getBit(31).getValue()) {
-                Word dest = currentInstruction.and(DEST_MASK).rightShift(5);
-                System.out.printf("DEBUG-- writing %d to register %d\n", destination.getUnsigned(), dest.getUnsigned());
-                writeRegister(getUnsigned(dest), alu.result);
-            }
+            // Check if this instruction was to halt
+            if (!instructionFormat.getBit(30).getValue() && !instructionFormat.getBit(31).getValue())
+                return;
+            // Was a valid operation (not a halt), go ahead and store
+            Word dest = currentInstruction.and(DEST_MASK).rightShift(5);
+            System.out.printf("DEBUG-- writing %d to register %d\n", destination.getUnsigned(), dest.getUnsigned());
+            writeRegister(getUnsigned(dest), alu.result);
         }
     }
 
     private int getUnsigned(Word word) {
+        // todo: not sure if I'm allowed to do this, can't use int in Processor?
+        // other idea: a huge method with 32 if statements checking individual bits
         int returnValue = 0;
         for (int i = 0; i < 32; i++) {
             if (word.getBit(i).getValue())
