@@ -16,7 +16,6 @@ public class Processor {
     private final Word DEST_MASK = new Word();
     private final Word FUNCTION_MASK = new Word();
     private final Word OPERATION_MASK = new Word();
-    
 
     public Processor() {
         // stackPointer should begin at 1024.
@@ -56,92 +55,21 @@ public class Processor {
 
     private void decode() {
         Word instructionFormat = currentInstruction.and(INSTRUCTION_FORMAT_MASK);
-        if (instructionFormat.getBit(30).getValue() && instructionFormat.getBit(31).getValue()) {
-            // 11 = 3R
-            Word immMask = new Word();
-            for (int i = 0; i < 8; i++) {
-                immMask.setBit(i, new Bit(true));
-            }
-            immediate = currentInstruction.and(immMask).rightShift(24);
-            Word reg1Mask = new Word();
-            for (int i = 8; i < 13; i++) {
-                reg1Mask.setBit(i, new Bit(true));
-            }
-            Word reg1 = currentInstruction.and(reg1Mask).rightShift(19);
-            source1 = readRegister(getUnsigned(reg1));
-            Word reg2Mask = new Word();
-            for (int i = 13; i < 18; i++) {
-                reg2Mask.setBit(i, new Bit(true));
-            }
-            Word reg2 = currentInstruction.and(reg2Mask).rightShift(14);
-            source2 = readRegister(getUnsigned(reg2));
-            Word dest = currentInstruction.and(DEST_MASK).rightShift(5);
-            destination = readRegister(getUnsigned(dest));
-        }
-        else if (instructionFormat.getBit(30).getValue()) {
-            // 10 = 2R
-            Word immMask = new Word();
-            for (int i = 0; i < 13; i++) {
-                immMask.setBit(i, new Bit(true));
-            }
-            immediate = currentInstruction.and(immMask).rightShift(19);
-            Word reg1Mask = new Word();
-            for (int i = 13; i < 18; i++) {
-                reg1Mask.setBit(i, new Bit(true));
-            }
-            Word reg1 = currentInstruction.and(reg1Mask).rightShift(14);
-            source1 = readRegister(getUnsigned(reg1));
-            Word dest = currentInstruction.and(DEST_MASK).rightShift(5);
-            destination = readRegister(getUnsigned(dest));
-        }
-        else if (instructionFormat.getBit(31).getValue()) {
-            // 01 = 1R
-            Word immMask = new Word();
-            for (int i = 0; i < 18; i++) {
-                immMask.setBit(i, new Bit(true));
-            }
-            immediate = currentInstruction.and(immMask).rightShift(14);
-            Word dest = currentInstruction.and(DEST_MASK).rightShift(5);
-            destination = readRegister(getUnsigned(dest));
-        }
-        else {
-            // 0R
-            Word immMask = new Word();
-            for (int i = 0; i < 27; i++) {
-                immMask.setBit(i, new Bit(true));
-            }
-            immediate = currentInstruction.and(immMask).rightShift(5);
-        }
+        if (instructionFormat.getBit(30).getValue() && instructionFormat.getBit(31).getValue())
+            decode3R();
+        else if (instructionFormat.getBit(30).getValue())
+            decode2R();
+        else if (instructionFormat.getBit(31).getValue())
+            decode1R();
+        else
+            decode0R();
     }
 
     private void execute() {
         Word instructionFormat = currentInstruction.and(INSTRUCTION_FORMAT_MASK);
         Word operation = currentInstruction.and(OPERATION_MASK).rightShift(2);
-        if (!operation.getBit(29).getValue() && !operation.getBit(30).getValue() && !operation.getBit(31).getValue()) {
-            // math op
-            Word function = currentInstruction.and(FUNCTION_MASK).rightShift(10);
-            Bit[] op = new Bit[] { function.getBit(28), function.getBit(29), function.getBit(30), function.getBit(31) };
-            System.out.printf("DEBUG-- R1 %d R2 %d R3 %d%n", registers[1].getUnsigned(), registers[2].getUnsigned(), registers[3].getUnsigned());
-            if (instructionFormat.getBit(30).getValue() && instructionFormat.getBit(31).getValue()) {
-                alu.operand1 = source1;
-                alu.operand2 = source2;
-                System.out.printf("DEBUG-- %d op %d%n", source1.getUnsigned(), source2.getUnsigned());
-                alu.doOperation(op);
-            }
-            else if (instructionFormat.getBit(30).getValue()) {
-                alu.operand1 = destination;
-                alu.operand2 = source1;
-                System.out.printf("DEBUG-- %d op %d%n", destination.getUnsigned(), source1.getUnsigned());
-                alu.doOperation(op);
-            }
-            else if (instructionFormat.getBit(31).getValue()) {
-                alu.result = immediate;
-            }
-            else
-                halted.set(true);
-
-            destination.copy(alu.result);
-        }
+        if (!operation.getBit(29).getValue() && !operation.getBit(30).getValue() && !operation.getBit(31).getValue())
+            executeMathOps(instructionFormat);
     }
 
     private void store() {
@@ -177,6 +105,100 @@ public class Processor {
         if (index == 0)
             return;
         registers[index].copy(value);
+    }
+
+    private void decode3R() {
+        // Need to get imm, Rs1, Rs2, Rd
+        Word immMask = new Word();
+        for (int i = 0; i < 8; i++) {
+            immMask.setBit(i, new Bit(true));
+        }
+        immediate = currentInstruction.and(immMask).rightShift(24);
+        Word reg1Mask = new Word();
+        for (int i = 8; i < 13; i++) {
+            reg1Mask.setBit(i, new Bit(true));
+        }
+        Word reg1 = currentInstruction.and(reg1Mask).rightShift(19);
+        source1 = readRegister(getUnsigned(reg1));
+        Word reg2Mask = new Word();
+        for (int i = 13; i < 18; i++) {
+            reg2Mask.setBit(i, new Bit(true));
+        }
+        Word reg2 = currentInstruction.and(reg2Mask).rightShift(14);
+        source2 = readRegister(getUnsigned(reg2));
+        Word dest = currentInstruction.and(DEST_MASK).rightShift(5);
+        destination = readRegister(getUnsigned(dest));
+        System.out.printf("DEBUG-- 3R: imm=%d rs1=R%d=%d rs2=R%d=%d rd=R%d=%d%n", immediate.getUnsigned(), reg1.getUnsigned(), source1.getUnsigned(), reg2.getUnsigned(), source2.getUnsigned(), dest.getUnsigned(), destination.getUnsigned());
+    }
+
+    private void decode2R() {
+        // Need to get imm, Rs1, Rd
+        Word immMask = new Word();
+        for (int i = 0; i < 13; i++) {
+            immMask.setBit(i, new Bit(true));
+        }
+        immediate = currentInstruction.and(immMask).rightShift(19);
+        Word reg1Mask = new Word();
+        for (int i = 13; i < 18; i++) {
+            reg1Mask.setBit(i, new Bit(true));
+        }
+        Word reg1 = currentInstruction.and(reg1Mask).rightShift(14);
+        source1 = readRegister(getUnsigned(reg1));
+        Word dest = currentInstruction.and(DEST_MASK).rightShift(5);
+        destination = readRegister(getUnsigned(dest));
+        System.out.printf("DEBUG-- 2R: imm=%d rs1=R%d=%d rd=R%d=%d%n", immediate.getUnsigned(), reg1.getUnsigned(), source1.getUnsigned(), dest.getUnsigned(), destination.getUnsigned());
+    }
+
+    private void decode1R() {
+        // Need to get imm, Rd
+        Word immMask = new Word();
+        for (int i = 0; i < 18; i++) {
+            immMask.setBit(i, new Bit(true));
+        }
+        immediate = currentInstruction.and(immMask).rightShift(14);
+        Word dest = currentInstruction.and(DEST_MASK).rightShift(5);
+        destination = readRegister(getUnsigned(dest));
+        System.out.printf("DEBUG-- 1R: imm=%d rd=R%d=%d%n", immediate.getUnsigned(), dest.getUnsigned(), destination.getUnsigned());
+    }
+
+    private void decode0R() {
+        // Need to get immediate
+        Word immMask = new Word();
+        for (int i = 0; i < 27; i++) {
+            immMask.setBit(i, new Bit(true));
+        }
+        immediate = currentInstruction.and(immMask).rightShift(5);
+        System.out.printf("DEBUG-- 0R: imm=%d%n", immediate.getUnsigned());
+    }
+
+    private void executeMathOps(Word instructionFormat) {
+        Word function = currentInstruction.and(FUNCTION_MASK).rightShift(10);
+        Bit[] op = new Bit[] { function.getBit(28), function.getBit(29), function.getBit(30), function.getBit(31) };
+        if (instructionFormat.getBit(30).getValue() && instructionFormat.getBit(31).getValue()) {
+            // Rd <- Rs1 op Rs2
+            alu.operand1 = source1;
+            alu.operand2 = source2;
+            System.out.printf("DEBUG-- %d op %d%n", source1.getUnsigned(), source2.getUnsigned());
+            alu.doOperation(op);
+        }
+        else if (instructionFormat.getBit(30).getValue()) {
+            // Rd <- Rd op Rs1
+            alu.operand1 = destination;
+            alu.operand2 = source1;
+            System.out.printf("DEBUG-- %d op %d%n", destination.getUnsigned(), source1.getUnsigned());
+            alu.doOperation(op);
+        }
+        else if (instructionFormat.getBit(31).getValue()) {
+            // Rd <- imm
+            alu.result = immediate;
+        }
+        else {
+            // Special case: set halted bit, don't copy result into destination
+            halted.set(true);
+            return;
+        }
+
+        destination.copy(alu.result);
     }
 
     // Used for testing
