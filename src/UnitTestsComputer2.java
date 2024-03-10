@@ -9,7 +9,7 @@ public class UnitTestsComputer2 {
         Processor processor = new Processor();
         MainMemory.load(new String[] {
                 "00000000000000010111100000000001", // math addimm 5 R0
-                "00000000000000000000000000000000"  // HALT
+                "00000000000000000000000000000000"  // halt
         });
         processor.run();
         // Do not allow writes over R0
@@ -20,10 +20,10 @@ public class UnitTestsComputer2 {
     public void generate25inR3_testAdd() {
         Processor processor = new Processor();
         MainMemory.load(new String[] {
-                "00000000000000010111100000100001", // MATH DestOnly 5 R1
-                "00000000000010000111100001000011", // MATH ADD R1 R1 R2
-                "00000000000000001011100001000010", // MATH ADD R2 R2
-                "00000000000100000111100001100011", // MATH ADD R2 R1 R3
+                "00000000000000010111100000100001", // math addimm 5 R1
+                "00000000000010000111100001000011", // math add R1 R1 R2
+                "00000000000000001011100001000010", // math add R2 R2
+                "00000000000100000111100001100011", // math add R2 R1 R3
                 // HALT
         });
         processor.run();

@@ -6,6 +6,7 @@ public class Processor {
     private Word currentInstruction;
     private Bit halted = new Bit();
     private Word[] registers = new Word[32];
+
     private Word source1;
     private Word source2;
     private Word immediate;
@@ -83,19 +84,8 @@ public class Processor {
             // Was a valid operation (not a halt), go ahead and store
             Word dest = currentInstruction.and(DEST_MASK).rightShift(5);
             System.out.printf("DEBUG-- writing %d to register %d\n", destination.getUnsigned(), dest.getUnsigned());
-            writeRegister(getUnsigned(dest), alu.result);
+            writeRegister(getRegister(dest), alu.result);
         }
-    }
-
-    private int getUnsigned(Word word) {
-        // todo: not sure if I'm allowed to do this, can't use int in Processor?
-        // other idea: a huge method with 32 if statements checking individual bits
-        int returnValue = 0;
-        for (int i = 0; i < 32; i++) {
-            if (word.getBit(i).getValue())
-                returnValue += (int) Math.pow(2, 32 - 1 - i);
-        }
-        return returnValue;
     }
 
     // Ensures register 0 is always read as 0
@@ -124,15 +114,15 @@ public class Processor {
             reg1Mask.setBit(i, new Bit(true));
         }
         Word reg1 = currentInstruction.and(reg1Mask).rightShift(19);
-        source1 = readRegister(getUnsigned(reg1));
+        source1 = readRegister(getRegister(reg1));
         Word reg2Mask = new Word();
         for (int i = 13; i < 18; i++) {
             reg2Mask.setBit(i, new Bit(true));
         }
         Word reg2 = currentInstruction.and(reg2Mask).rightShift(14);
-        source2 = readRegister(getUnsigned(reg2));
+        source2 = readRegister(getRegister(reg2));
         Word dest = currentInstruction.and(DEST_MASK).rightShift(5);
-        destination = readRegister(getUnsigned(dest));
+        destination = readRegister(getRegister(dest));
         System.out.printf("DEBUG-- 3R: imm=%d rs1=R%d=%d rs2=R%d=%d rd=R%d=%d%n", immediate.getUnsigned(), reg1.getUnsigned(), source1.getUnsigned(), reg2.getUnsigned(), source2.getUnsigned(), dest.getUnsigned(), destination.getUnsigned());
     }
 
@@ -148,9 +138,9 @@ public class Processor {
             reg1Mask.setBit(i, new Bit(true));
         }
         Word reg1 = currentInstruction.and(reg1Mask).rightShift(14);
-        source1 = readRegister(getUnsigned(reg1));
+        source1 = readRegister(getRegister(reg1));
         Word dest = currentInstruction.and(DEST_MASK).rightShift(5);
-        destination = readRegister(getUnsigned(dest));
+        destination = readRegister(getRegister(dest));
         System.out.printf("DEBUG-- 2R: imm=%d rs1=R%d=%d rd=R%d=%d%n", immediate.getUnsigned(), reg1.getUnsigned(), source1.getUnsigned(), dest.getUnsigned(), destination.getUnsigned());
     }
 
@@ -162,7 +152,7 @@ public class Processor {
         }
         immediate = currentInstruction.and(immMask).rightShift(14);
         Word dest = currentInstruction.and(DEST_MASK).rightShift(5);
-        destination = readRegister(getUnsigned(dest));
+        destination = readRegister(getRegister(dest));
         System.out.printf("DEBUG-- 1R: imm=%d rd=R%d=%d%n", immediate.getUnsigned(), dest.getUnsigned(), destination.getUnsigned());
     }
 
@@ -204,6 +194,71 @@ public class Processor {
         }
 
         destination.copy(alu.result);
+    }
+
+    private int getRegister(Word word) {
+        Bit[] registerNumber = new Bit[] { word.getBit(27), word.getBit(28), word.getBit(29), word.getBit(30), word.getBit(31) };
+
+        if (registerNumber[0].getValue()) { // 1XXXX
+            if (registerNumber[1].getValue()) { // 11XXX
+                if (registerNumber[2].getValue()) { // 111XX
+                    if (registerNumber[3].getValue()) // 1111X
+                        return (registerNumber[4].getValue()) ? 31 : 30;
+                    else // 1110X
+                        return (registerNumber[4].getValue()) ? 29 : 28;
+                }
+                else { // 110XX
+                    if (registerNumber[3].getValue()) // 1101X
+                        return (registerNumber[4].getValue()) ? 27 : 26;
+                    else // 1100X
+                        return (registerNumber[4].getValue()) ? 25 : 24;
+                }
+            }
+            else { // 10XXX
+                if (registerNumber[2].getValue()) { // 101XX
+                    if (registerNumber[3].getValue()) // 1011X
+                        return (registerNumber[4].getValue()) ? 23 : 22;
+                    else // 1010X
+                        return (registerNumber[4].getValue()) ? 21 : 20;
+                }
+                else { // 100XX
+                    if (registerNumber[3].getValue()) // 1001X
+                        return (registerNumber[4].getValue()) ? 19 : 18;
+                    else // 1000X
+                        return (registerNumber[4].getValue()) ? 17 : 16;
+                }
+            }
+        }
+        else { // 0XXXX
+            if (registerNumber[1].getValue()) { // 01XXX
+                if (registerNumber[2].getValue()) { // 011XX
+                    if (registerNumber[3].getValue()) // 0111X
+                        return (registerNumber[4].getValue()) ? 15 : 14;
+                    else // 0110X
+                        return (registerNumber[4].getValue()) ? 13 : 12;
+                }
+                else { // 010XX
+                    if (registerNumber[3].getValue()) // 0101X
+                        return (registerNumber[4].getValue()) ? 11 : 10;
+                    else // 0100X
+                        return (registerNumber[4].getValue()) ? 9 : 8;
+                }
+            }
+            else { // 00XXX
+                if (registerNumber[2].getValue()) { // 001XX
+                    if (registerNumber[3].getValue()) // 0011X
+                        return (registerNumber[4].getValue()) ? 7 : 6;
+                    else // 0010X
+                        return (registerNumber[4].getValue()) ? 5 : 4;
+                }
+                else { // 000XX
+                    if (registerNumber[3].getValue()) // 0001X
+                        return (registerNumber[4].getValue()) ? 3 : 2;
+                    else // 0000X
+                        return (registerNumber[4].getValue()) ? 1 : 0;
+                }
+            }
+        }
     }
 
     // Used for testing
