@@ -55,6 +55,7 @@ public class Processor {
     }
 
     private void decode() {
+        // Use last two bits to determine instruction format
         Word instructionFormat = currentInstruction.and(INSTRUCTION_FORMAT_MASK);
         if (instructionFormat.getBit(30).getValue() && instructionFormat.getBit(31).getValue())
             decode3R();
@@ -67,6 +68,7 @@ public class Processor {
     }
 
     private void execute() {
+        // What to execute depends on both the 3 operation bits and the 2 instruction format bits
         Word instructionFormat = currentInstruction.and(INSTRUCTION_FORMAT_MASK);
         Word operation = currentInstruction.and(OPERATION_MASK).rightShift(2);
         if (!operation.getBit(29).getValue() && !operation.getBit(30).getValue() && !operation.getBit(31).getValue())
@@ -78,7 +80,7 @@ public class Processor {
         Word operation = currentInstruction.and(OPERATION_MASK).rightShift(2);
         // Math operations
         if (!operation.getBit(29).getValue() && !operation.getBit(30).getValue() && !operation.getBit(31).getValue()) {
-            // Check if this instruction was to halt
+            // Special case: check if this instruction was to halt
             if (!instructionFormat.getBit(30).getValue() && !instructionFormat.getBit(31).getValue())
                 return;
             // Was a valid operation (not a halt), go ahead and store
@@ -196,6 +198,7 @@ public class Processor {
         destination.copy(alu.result);
     }
 
+    // Helper function that gets a register's array index, manually checks bits (no math)
     private int getRegister(Word word) {
         Bit[] registerNumber = new Bit[] { word.getBit(27), word.getBit(28), word.getBit(29), word.getBit(30), word.getBit(31) };
 

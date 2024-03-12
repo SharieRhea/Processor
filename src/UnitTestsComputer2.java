@@ -24,7 +24,7 @@ public class UnitTestsComputer2 {
                 "00000000000010000111100001000011", // math add R1 R1 R2
                 "00000000000000001011100001000010", // math add R2 R2
                 "00000000000100000111100001100011", // math add R2 R1 R3
-                // HALT
+                // halt
         });
         processor.run();
         assertEquals(25, processor.getRegisters()[3].getUnsigned());
