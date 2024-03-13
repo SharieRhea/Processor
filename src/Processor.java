@@ -58,9 +58,9 @@ public class Processor {
         // Use last two bits to determine instruction format
         Word instructionFormat = currentInstruction.and(INSTRUCTION_FORMAT_MASK);
         if (instructionFormat.getBit(30).getValue() && instructionFormat.getBit(31).getValue())
-            decode3R();
-        else if (instructionFormat.getBit(30).getValue())
             decode2R();
+        else if (instructionFormat.getBit(30).getValue())
+            decode3R();
         else if (instructionFormat.getBit(31).getValue())
             decode1R();
         else
@@ -172,17 +172,17 @@ public class Processor {
         Word function = currentInstruction.and(FUNCTION_MASK).rightShift(10);
         Bit[] op = new Bit[] { function.getBit(28), function.getBit(29), function.getBit(30), function.getBit(31) };
         if (instructionFormat.getBit(30).getValue() && instructionFormat.getBit(31).getValue()) {
-            // Rd <- Rs1 op Rs2
-            alu.operand1 = source1;
-            alu.operand2 = source2;
-            System.out.printf("DEBUG-- %d op %d%n", source1.getUnsigned(), source2.getUnsigned());
-            alu.doOperation(op);
-        }
-        else if (instructionFormat.getBit(30).getValue()) {
             // Rd <- Rd op Rs1
             alu.operand1 = destination;
             alu.operand2 = source1;
             System.out.printf("DEBUG-- %d op %d%n", destination.getUnsigned(), source1.getUnsigned());
+            alu.doOperation(op);
+        }
+        else if (instructionFormat.getBit(30).getValue()) {
+            // Rd <- Rs1 op Rs2
+            alu.operand1 = source1;
+            alu.operand2 = source2;
+            System.out.printf("DEBUG-- %d op %d%n", source1.getUnsigned(), source2.getUnsigned());
             alu.doOperation(op);
         }
         else if (instructionFormat.getBit(31).getValue()) {
