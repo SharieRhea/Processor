@@ -237,6 +237,13 @@ public class Processor {
             immMask.setBit(i, new Bit(true));
         }
         immediate = currentInstruction.and(immMask).rightShift(24);
+        // Need to account for negative numbers by extending sign
+        if (currentInstruction.getBit(0).getValue()) {
+            for (int i = 0; i < 24; i++) {
+                immediate.setBit(i, new Bit(true));
+            }
+        }
+
         Word reg1Mask = new Word();
         for (int i = 8; i < 13; i++) {
             reg1Mask.setBit(i, new Bit(true));
@@ -261,6 +268,13 @@ public class Processor {
             immMask.setBit(i, new Bit(true));
         }
         immediate = currentInstruction.and(immMask).rightShift(19);
+        // Need to account for negative numbers by extending sign
+        if (currentInstruction.getBit(0).getValue()) {
+            for (int i = 0; i < 19; i++) {
+                immediate.setBit(i, new Bit(true));
+            }
+        }
+
         Word reg1Mask = new Word();
         for (int i = 13; i < 18; i++) {
             reg1Mask.setBit(i, new Bit(true));
@@ -279,6 +293,12 @@ public class Processor {
             immMask.setBit(i, new Bit(true));
         }
         immediate = currentInstruction.and(immMask).rightShift(14);
+        // Need to account for negative numbers by extending sign
+        if (currentInstruction.getBit(0).getValue()) {
+            for (int i = 0; i < 14; i++) {
+                immediate.setBit(i, new Bit(true));
+            }
+        }
         Word dest = currentInstruction.and(DEST_MASK).rightShift(5);
         destination = readRegister(getRegister(dest));
         System.out.printf("DEBUG-- 1R: imm=%d rd=R%d=%d%n", immediate.getUnsigned(), dest.getUnsigned(), destination.getUnsigned());
@@ -291,6 +311,12 @@ public class Processor {
             immMask.setBit(i, new Bit(true));
         }
         immediate = currentInstruction.and(immMask).rightShift(5);
+        // Need to account for negative numbers by extending sign
+        if (currentInstruction.getBit(0).getValue()) {
+            for (int i = 0; i < 5; i++) {
+                immediate.setBit(i, new Bit(true));
+            }
+        }
         System.out.printf("DEBUG-- 0R: imm=%d%n", immediate.getUnsigned());
     }
 
