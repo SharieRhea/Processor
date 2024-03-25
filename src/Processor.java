@@ -73,7 +73,21 @@ public class Processor {
         Word operation = currentInstruction.and(OPERATION_MASK).rightShift(2);
         if (!operation.getBit(29).getValue() && !operation.getBit(30).getValue() && !operation.getBit(31).getValue())
             executeMathOps(instructionFormat);
+        else if (!operation.getBit(29).getValue() && !operation.getBit(30).getValue() && operation.getBit(31).getValue())
+            executeBranchOps(instructionFormat);
+        /*else if (!operation.getBit(29).getValue() && operation.getBit(30).getValue() && !operation.getBit(31).getValue())
+            executeCallOps(instructionFormat);
+        else if (!operation.getBit(29).getValue() && operation.getBit(30).getValue() && operation.getBit(31).getValue())
+            executePushOps(instructionFormat);
+        else if (operation.getBit(29).getValue() && !operation.getBit(30).getValue() && !operation.getBit(31).getValue())
+            executeLoadOps(instructionFormat);
+        else if (operation.getBit(29).getValue() && !operation.getBit(30).getValue() && operation.getBit(31).getValue())
+            executeStoreOps(instructionFormat);
+        else
+            executePopInterruptOps(instructionFormat);*/
     }
+
+
 
     private void store() {
         Word instructionFormat = currentInstruction.and(INSTRUCTION_FORMAT_MASK);
@@ -90,18 +104,130 @@ public class Processor {
         }
     }
 
-    // Ensures register 0 is always read as 0
-    private Word readRegister(int index) {
-        if (index == 0)
-            return new Word();
-        return registers[index];
+    private void executeMathOps(Word instructionFormat) {
+        Word function = currentInstruction.and(FUNCTION_MASK).rightShift(10);
+        Bit[] op = new Bit[] { function.getBit(28), function.getBit(29), function.getBit(30), function.getBit(31) };
+
+        if (instructionFormat.getBit(30).getValue() && instructionFormat.getBit(31).getValue()) {
+            // Rd <- Rd op Rs1
+            alu.operand1 = destination;
+            alu.operand2 = source1;
+            System.out.printf("DEBUG-- %d op %d%n", destination.getUnsigned(), source1.getUnsigned());
+            alu.doOperation(op);
+        }
+        else if (instructionFormat.getBit(30).getValue()) {
+            // Rd <- Rs1 op Rs2
+            alu.operand1 = source1;
+            alu.operand2 = source2;
+            System.out.printf("DEBUG-- %d op %d%n", source1.getUnsigned(), source2.getUnsigned());
+            alu.doOperation(op);
+        }
+        else if (instructionFormat.getBit(31).getValue()) {
+            // Rd <- imm
+            alu.result = immediate;
+        }
+        else {
+            // Special case: set halted bit, don't copy result into destination
+            halted.set(true);
+            return;
+        }
+
+        destination.copy(alu.result);
     }
 
-    // Ensures register 0 cannot be overwritten
-    private void writeRegister(int index, Word value) {
-        if (index == 0)
-            return;
-        registers[index].copy(value);
+    private void executeBranchOps(Word instructionFormat) {
+        Word function = currentInstruction.and(FUNCTION_MASK).rightShift(10);
+        Bit[] op = new Bit[] { function.getBit(28), function.getBit(29), function.getBit(30), function.getBit(31) };
+        Bit[] addOp = new Bit[] { new Bit(true), new Bit(true), new Bit(true), new Bit() };
+
+        if (instructionFormat.getBit(30).getValue() && instructionFormat.getBit(31).getValue()) {
+            // pc <- Rs1 bop Rd ? pc + imm : pc
+            if (performBooleanOp(op, source1, destination).getValue()) {
+                alu.operand1 = programCounter;
+                alu.operand2 = immediate;
+                alu.doOperation(addOp);
+                programCounter.copy(alu.result);
+            }
+            // do nothing otherwise, let pc increment normally
+        }
+        else if (instructionFormat.getBit(30).getValue()) {
+            // pc <- Rs1 bop Rs2 ? pc + imm : pc
+            if (performBooleanOp(op, source1, source2).getValue()) {
+                alu.operand1 = programCounter;
+                alu.operand2 = immediate;
+                alu.doOperation(addOp);
+                programCounter.copy(alu.result);
+            }
+            // do nothing otherwise, let pc increment normally
+        }
+        else if (instructionFormat.getBit(31).getValue()) {
+            // jump: pc <- pc + imm
+            alu.operand1 = programCounter;
+            alu.operand2 = immediate;
+            alu.doOperation(addOp);
+            programCounter.copy(alu.result);
+        }
+        else {
+            // jump: pc <- imm
+            programCounter.copy(immediate);
+        }
+    }
+
+    private Bit performBooleanOp(Bit[] operation, Word operand1, Word operand2) {
+        Bit[] subtractionOp = new Bit[] { new Bit(true), new Bit(true), new Bit(true), new Bit(true) };
+        // Subtract the two operands to compare their values
+        alu.operand1 = operand1;
+        alu.operand2 = operand2;
+        alu.doOperation(subtractionOp);
+        Word result = new Word();
+        result.copy(alu.result);
+
+        if (!operation[0].getValue() && !operation[1].getValue() && !operation[2].getValue() && !operation[3].getValue()) {
+            // equal
+            for (int i = 0; i < 32; i++) {
+                if (result.getBit(i).getValue())
+                    return new Bit();
+            }
+            return new Bit(true);
+        }
+        else if (!operation[0].getValue() && !operation[1].getValue() && !operation[2].getValue() && operation[3].getValue()) {
+            // not equal
+            for (int i = 0; i < 32; i++) {
+                if (result.getBit(i).getValue())
+                    return new Bit(true);
+            }
+            return new Bit();
+        }
+        else if (!operation[0].getValue() && !operation[1].getValue() && operation[2].getValue() && !operation[3].getValue()) {
+            // less than
+            return (result.getBit(0).getValue()) ? new Bit(true) : new Bit();
+        }
+        else if (!operation[0].getValue() && !operation[1].getValue() && operation[2].getValue() && operation[3].getValue()) {
+            // greater than or equal
+            return (result.getBit(0).getValue()) ? new Bit() : new Bit(true);
+        }
+        else if (!operation[0].getValue() && operation[1].getValue() && !operation[2].getValue() && !operation[3].getValue()) {
+            // greater than
+            if (result.getBit(0).getValue())
+                return new Bit();
+            // check for 0
+            for (int i = 0; i < 32; i++) {
+                if (result.getBit(i).getValue())
+                    return new Bit();
+            }
+            return new Bit(true);
+        }
+        else {
+            // less than or equal
+            if (result.getBit(0).getValue())
+                return new Bit(true);
+            // check for 0
+            for (int i = 0; i < 32; i++) {
+                if (result.getBit(i).getValue())
+                    return new Bit();
+            }
+            return new Bit(true);
+        }
     }
 
     private void decode3R() {
@@ -168,34 +294,18 @@ public class Processor {
         System.out.printf("DEBUG-- 0R: imm=%d%n", immediate.getUnsigned());
     }
 
-    private void executeMathOps(Word instructionFormat) {
-        Word function = currentInstruction.and(FUNCTION_MASK).rightShift(10);
-        Bit[] op = new Bit[] { function.getBit(28), function.getBit(29), function.getBit(30), function.getBit(31) };
-        if (instructionFormat.getBit(30).getValue() && instructionFormat.getBit(31).getValue()) {
-            // Rd <- Rd op Rs1
-            alu.operand1 = destination;
-            alu.operand2 = source1;
-            System.out.printf("DEBUG-- %d op %d%n", destination.getUnsigned(), source1.getUnsigned());
-            alu.doOperation(op);
-        }
-        else if (instructionFormat.getBit(30).getValue()) {
-            // Rd <- Rs1 op Rs2
-            alu.operand1 = source1;
-            alu.operand2 = source2;
-            System.out.printf("DEBUG-- %d op %d%n", source1.getUnsigned(), source2.getUnsigned());
-            alu.doOperation(op);
-        }
-        else if (instructionFormat.getBit(31).getValue()) {
-            // Rd <- imm
-            alu.result = immediate;
-        }
-        else {
-            // Special case: set halted bit, don't copy result into destination
-            halted.set(true);
-            return;
-        }
+    // Ensures register 0 is always read as 0
+    private Word readRegister(int index) {
+        if (index == 0)
+            return new Word();
+        return registers[index];
+    }
 
-        destination.copy(alu.result);
+    // Ensures register 0 cannot be overwritten
+    private void writeRegister(int index, Word value) {
+        if (index == 0)
+            return;
+        registers[index].copy(value);
     }
 
     // Helper function that gets a register's array index, manually checks bits (no math)
