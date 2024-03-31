@@ -9,6 +9,15 @@ public class Word {
         }
     }
 
+    // Create a word with an integer value, for testing
+    public Word(int value) {
+        array = new Bit[32];
+        for (int i = 0; i < 32; i++) {
+            array[i] = new Bit(false);
+        }
+        set(value);
+    }
+
     public Bit getBit(int index) {
         return new Bit(array[index].getValue());
     }
@@ -78,6 +87,20 @@ public class Word {
         for (int i = 31; i >= 0; i--) {
             returnValue.setBit(i, carry.xor(getBit(i)));
             carry = carry.and(getBit(i));
+        }
+        return returnValue;
+    }
+
+    public Word decrement() {
+        Word returnValue = new Word();
+        returnValue.copy(this);
+        for (int i = 31; i >= 0; i--) {
+            if (getBit(i).getValue()) {
+                returnValue.setBit(i, new Bit());
+                break;
+            }
+            else
+                returnValue.setBit(i, new Bit(true));
         }
         return returnValue;
     }
