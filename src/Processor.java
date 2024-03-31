@@ -78,17 +78,15 @@ public class Processor {
             executeBranchOps(instructionFormat);
         else if (!operation.getBit(29).getValue() && operation.getBit(30).getValue() && !operation.getBit(31).getValue())
             executeCallOps(instructionFormat);
-        /*else if (!operation.getBit(29).getValue() && operation.getBit(30).getValue() && operation.getBit(31).getValue())
+        else if (!operation.getBit(29).getValue() && operation.getBit(30).getValue() && operation.getBit(31).getValue())
             executePushOps(instructionFormat);
         else if (operation.getBit(29).getValue() && !operation.getBit(30).getValue() && !operation.getBit(31).getValue())
             executeLoadOps(instructionFormat);
         else if (operation.getBit(29).getValue() && !operation.getBit(30).getValue() && operation.getBit(31).getValue())
             executeStoreOps(instructionFormat);
         else
-            executePopInterruptOps(instructionFormat);*/
+            executePopInterruptOps(instructionFormat);
     }
-
-
 
     private void store() {
         Word instructionFormat = currentInstruction.and(INSTRUCTION_FORMAT_MASK);
@@ -100,7 +98,7 @@ public class Processor {
                 return;
             // Was a valid operation (not a halt), go ahead and store
             Word dest = currentInstruction.and(DEST_MASK).rightShift(5);
-            System.out.printf("DEBUG-- writing %d to register %d\n", destination.getUnsigned(), dest.getUnsigned());
+            System.out.printf("DEBUG-- writing %d to register %d\n", destination.getSigned(), dest.getUnsigned());
             writeRegister(getRegister(dest), alu.result);
         }
         // Branch operations
@@ -117,7 +115,34 @@ public class Processor {
             if (!instructionFormat.getBit(30).getValue() && !instructionFormat.getBit(31).getValue())
                 return;
             MainMemory.write(stackPointer, alu.result);
-            stackPointer.decrement();
+            stackPointer.copy(stackPointer.decrement());
+        }
+        // Load operations
+        else if (operation.getBit(29).getValue() && !operation.getBit(30).getValue() && !operation.getBit(31).getValue()) {
+            // Special case: 0R is for return, don't store anything into Rd
+            if (!instructionFormat.getBit(30).getValue() && !instructionFormat.getBit(31).getValue())
+                return;
+            Word dest = currentInstruction.and(DEST_MASK).rightShift(5);
+            System.out.printf("DEBUG-- writing %d to register %d\n", destination.getSigned(), dest.getUnsigned());
+            writeRegister(getRegister(dest), MainMemory.read(alu.result));
+        }
+        // Store operations
+        else if (operation.getBit(29).getValue() && !operation.getBit(30).getValue() && operation.getBit(31).getValue()) {
+            if (instructionFormat.getBit(30).getValue() && instructionFormat.getBit(31).getValue())
+                MainMemory.write(alu.result, source1);
+            else if (instructionFormat.getBit(30).getValue())
+                MainMemory.write(alu.result, source2);
+            else if (instructionFormat.getBit(31).getValue())
+                MainMemory.write(destination, immediate);
+            // 0R is unused, do nothing
+        }
+        // Peek/Pop operations
+        else if (operation.getBit(29).getValue() && operation.getBit(30).getValue() && !operation.getBit(31).getValue()) {
+            // 0R is interrupt, do nothing for now
+            if (!instructionFormat.getBit(30).getValue() && !instructionFormat.getBit(31).getValue())
+                return;
+            Word dest = currentInstruction.and(DEST_MASK).rightShift(5);
+            writeRegister(getRegister(dest), MainMemory.read(alu.result));
         }
     }
 
@@ -262,6 +287,87 @@ public class Processor {
             alu.doOperation(op);
         }
         // 0R is UNUSED
+    }
+
+    private void executeLoadOps(Word instructionFormat) {
+        Word function = currentInstruction.and(FUNCTION_MASK).rightShift(10);
+        Bit[] op = new Bit[] { function.getBit(28), function.getBit(29), function.getBit(30), function.getBit(31) };
+
+        if (instructionFormat.getBit(30).getValue() && instructionFormat.getBit(31).getValue()) {
+            // Rd <- mem[Rs1 + imm]
+            alu.operand1 = source1;
+            alu.operand2 = immediate;
+            alu.doOperation(op);
+        }
+        else if (instructionFormat.getBit(30).getValue()) {
+            // Rd <- mem[Rs1 + Rs2]
+            alu.operand1 = source1;
+            alu.operand2 = source2;
+            alu.doOperation(op);
+        }
+        else if (instructionFormat.getBit(31).getValue()) {
+            // Rd <- mem[Rd + imm]
+            alu.operand1 = destination;
+            alu.operand2 = immediate;
+            alu.doOperation(op);
+        }
+        else {
+            // return (pc <- pop)
+            stackPointer.copy(stackPointer.increment());
+            programCounter.copy(MainMemory.read(stackPointer));
+        }
+    }
+
+    private void executeStoreOps(Word instructionFormat) {
+        Word function = currentInstruction.and(FUNCTION_MASK).rightShift(10);
+        Bit[] op = new Bit[] { function.getBit(28), function.getBit(29), function.getBit(30), function.getBit(31) };
+
+        if (instructionFormat.getBit(30).getValue() && instructionFormat.getBit(31).getValue()) {
+            // mem[Rd + imm] <- Rs1
+            alu.operand1 = destination;
+            alu.operand2 = immediate;
+            alu.doOperation(op);
+        }
+        else if (instructionFormat.getBit(30).getValue()) {
+            // mem[Rd + Rs1] <- Rs2
+            alu.operand1 = destination;
+            alu.operand2 = source1;
+            alu.doOperation(op);
+        }
+        // 1R: mem[Rd] <- Rd
+        // 0R is UNUSED
+    }
+
+    private void executePopInterruptOps(Word instructionFormat) {
+        Bit[] subtractionOp = new Bit[] { new Bit(true), new Bit(true), new Bit(true), new Bit(true) };
+        Bit[] additionOp = new Bit[] { new Bit(true), new Bit(true), new Bit(true), new Bit() };
+
+        if (instructionFormat.getBit(30).getValue() && instructionFormat.getBit(31).getValue()) {
+            // peek: Rd <- mem[sp - (Rs1 + imm)]
+            alu.operand1 = source1;
+            alu.operand2 = immediate;
+            alu.doOperation(additionOp);
+            alu.operand1 = stackPointer;
+            alu.operand2 = alu.result;
+            alu.doOperation(subtractionOp);
+        }
+        else if (instructionFormat.getBit(30).getValue()) {
+            // peek: Rd <- mem[sp - (Rs1 + Rs2)]
+            alu.operand1 = source1;
+            alu.operand2 = source2;
+            alu.doOperation(additionOp);
+            alu.operand1 = stackPointer;
+            alu.operand2 = alu.result;
+            alu.doOperation(subtractionOp);
+        }
+        else if (instructionFormat.getBit(31).getValue()) {
+            // pop: Rd <- mem[sp++]
+            alu.result = stackPointer.increment();
+            stackPointer.copy(alu.result);
+        }
+        else {
+            // todo: interrupt: push pc; pc <- intvec[imm]
+        }
     }
 
     private Bit performBooleanOp(Bit[] operation, Word operand1, Word operand2) {

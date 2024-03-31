@@ -407,4 +407,194 @@ public class UnitTestsComputer3 {
         assertEquals(1022, processor.getStackPointer().getSigned());
         assertEquals(2, processor.getRegisters()[24].getSigned());
     }
+
+    // Push tests
+    @Test
+    public void push2R() {
+        Processor processor = new Processor();
+        MainMemory.load(new String[]{
+                "11111111111101100000000110100001", // math copy -40 R13
+                "00000000000000101000000111000001", // math copy 10 R14
+                "00000000000000111001110110101111", // push mult R13 R14
+                "00000000000000111001110110101111", // push mult R13 R14
+                "00000000000000111001110110101111", // push mult R13 R14
+        });
+        processor.run();
+        assertEquals(-400, MainMemory.read(new Word(1023)).getSigned());
+        assertEquals(-400, MainMemory.read(new Word(1022)).getSigned());
+        assertEquals(-400, MainMemory.read(new Word(1021)).getSigned());
+        assertEquals(1020, processor.getStackPointer().getSigned());
+    }
+
+    @Test
+    public void push3R() {
+        Processor processor = new Processor();
+        MainMemory.load(new String[]{
+                "00000000010110110100000110100001", // math copy 365 R13
+                "00000000000000101000000111000001", // math copy 10 R14
+                "00000000011010111001110000001110", // push mult R13 R14
+                "00000000011010111001110000001110", // push mult R13 R14
+        });
+        processor.run();
+        assertEquals(3650, MainMemory.read(new Word(1023)).getSigned());
+        assertEquals(3650, MainMemory.read(new Word(1022)).getSigned());
+        assertEquals(1021, processor.getStackPointer().getSigned());
+    }
+
+    @Test
+    public void push1R() {
+        Processor processor = new Processor();
+        MainMemory.load(new String[]{
+                "00000000000101100111100000001101", // push add R0 89
+                "11111111111101100000000110100001", // math copy -40 R13
+                "00000000000101100111100110101101", // push add R13 89
+        });
+        processor.run();
+        assertEquals(89, MainMemory.read(new Word(1023)).getSigned());
+        assertEquals(49, MainMemory.read(new Word(1022)).getSigned());
+        assertEquals(1021, processor.getStackPointer().getSigned());
+    }
+
+    // Load tests
+    @Test
+    public void load2R() {
+        Processor processor = new Processor();
+        MainMemory.load(new String[]{
+                "00000000000100110111100000001101", // push add R0 77
+                "00000000000000011100000000100001", // math copy R1 7
+                "00011111110000000111100001010011", // load add R2 R1 1016
+        });
+        processor.run();
+        assertEquals(77, processor.getRegisters()[2].getSigned());
+        assertEquals(1022, processor.getStackPointer().getSigned());
+    }
+
+    @Test
+    public void load3R() {
+        Processor processor = new Processor();
+        MainMemory.load(new String[]{
+                "00000000000100110111100000001101", // push add R0 77
+                "00000000000000011100000000100001", // math copy R1 7
+                "00000000111111100000000001000001", // math copy R2 1016
+                "00000000000010001011100001110010", // load add R3 R1 R2
+        });
+        processor.run();
+        assertEquals(77, processor.getRegisters()[3].getSigned());
+        assertEquals(1022, processor.getStackPointer().getSigned());
+    }
+
+    @Test
+    public void load1R() {
+        Processor processor = new Processor();
+        MainMemory.load(new String[]{
+                "00000000000100110111100000001101", // push add R0 77
+                "00000000000000011100000000100001", // math copy R1 7
+                "00000000111111100011100000110001", // load add R1 1016
+        });
+        processor.run();
+        assertEquals(77, processor.getRegisters()[1].getSigned());
+        assertEquals(1022, processor.getStackPointer().getSigned());
+    }
+
+    @Test
+    public void load0R() {
+        Processor processor = new Processor();
+        MainMemory.load(new String[]{
+                "00000000000010000000000111000001", // math copy R14 32
+                "00000000000100000000000111100001", // math copy R15 64
+                "00000000000000000000000011001000", // call 6
+                "00000000000000111111101100000010", // math add R0 R15 R24
+                "00000000000000000000000000000000", //
+                "00000000000000000000000000000000", //
+                "00000000000000111111100111000011", // math add R14 R15
+                "00000000000000000000000000010000", // load return
+
+        });
+        processor.run();
+        assertEquals(64, processor.getRegisters()[24].getSigned());
+        assertEquals(96, processor.getRegisters()[14].getSigned());
+    }
+
+    // Store tests
+    @Test
+    public void store2R() {
+        Processor processor = new Processor();
+        MainMemory.load(new String[]{
+                "00000000111110100000000010100001", // math copy 1000 R5
+                "11111111110010100000000011000001", // math copy -216 R6
+                "00000000010100011011100010110111", // store add R6 R5 10
+
+        });
+        processor.run();
+        assertEquals(-216, MainMemory.read(new Word(1010)).getSigned());
+    }
+
+    @Test
+    public void store3R() {
+        Processor processor = new Processor();
+        MainMemory.load(new String[]{
+                "00000000111110100000000010100001", // math copy 1000 R5
+                "11111111110010100000000011000001", // math copy -216 R6
+                "11111111110010100000000011100001", // math copy -216 R7
+                "00000000001010011011100011110110", // store add R6 R5 R7
+
+        });
+        processor.run();
+        assertEquals(-216, MainMemory.read(new Word(784)).getSigned());
+    }
+
+    @Test
+    public void store1R() {
+        Processor processor = new Processor();
+        MainMemory.load(new String[]{
+                "00000000111110100000000010100001", // math copy 1000 R5
+                "00000010010101111000000010110101", // store R5 2398
+
+        });
+        processor.run();
+        assertEquals(2398, MainMemory.read(new Word(1000)).getSigned());
+    }
+
+    // Pop/Interrupt tests
+    @Test
+    public void peek2R() {
+        Processor processor = new Processor();
+        MainMemory.load(new String[]{
+                "00000000111111110100000010100001", // math copy 1021 R5
+                "00000010010101111000000010110101", // store R5 2398
+                "00000000000100000000000101011011", // peek R10 R0 2
+
+        });
+        processor.run();
+        assertEquals(2398, MainMemory.read(new Word(1021)).getSigned());
+        assertEquals(2398, processor.getRegisters()[10].getSigned());
+    }
+
+    @Test
+    public void peek3R() {
+        Processor processor = new Processor();
+        MainMemory.load(new String[]{
+                "00000000111111110100000010100001", // math copy 1021 R5
+                "00000000000000001000000010000001", // math copy 2 R4
+                "00000010010101111000000010110101", // store R5 2398
+                "00000000000000010000000101011010", // peek R10 R0 R4
+
+        });
+        processor.run();
+        assertEquals(2398, MainMemory.read(new Word(1021)).getSigned());
+        assertEquals(2398, processor.getRegisters()[10].getSigned());
+    }
+
+    @Test
+    public void pop1R() {
+        Processor processor = new Processor();
+        MainMemory.load(new String[]{
+                "00000000000100110111100000001101", // push add R0 77
+                "00000000000000000000000000111001", // pop R1
+        });
+        processor.run();
+        assertEquals(77, MainMemory.read(new Word(1023)).getSigned());
+        assertEquals(1023, processor.getStackPointer().getSigned());
+        assertEquals(77, processor.getRegisters()[1].getSigned());
+    }
 }
