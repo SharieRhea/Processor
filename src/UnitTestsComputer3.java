@@ -4,6 +4,97 @@ import static org.junit.Assert.assertEquals;
 
 public class UnitTestsComputer3 {
 
+    // Note: Some memory tests will fail if run in a sequence (due to mem not being cleared), run separately if needed
+
+    // General Tests
+    @Test
+    public void whileLoop() {
+        // i = 0
+        // while (i < 20)
+        //     i += 5
+        Processor processor = new Processor();
+        MainMemory.load(new String[] {
+                "00000000000000010100000001000001", // math copy 5 R2
+                "00000000000001010000000001100001", // math copy 20 R3
+                "00000000000000001011100000100011", // math add R1 R2
+                "11111110000010001100100000000110", // branch lt R1 R3 -2 (3R)
+        });
+        processor.run();
+        assertEquals(20, processor.getRegisters()[1].getUnsigned());
+    }
+
+    @Test
+    public void factorial() {
+        // factorial(x) {
+        //     result = x
+        //     for(i = x - 1; i > 0; i--) {
+        //         result *= i
+        //     }
+        //     return result
+        // }
+        Processor processor = new Processor();
+        MainMemory.load(new String[] {
+                "00000000000000011100000000100001", // math copy 7 R1
+                "00000000000000000111100001000011", // math add R2 R1
+                "11111111111111111100000011000001", // math copy -1 R6
+                "00000000000100011011100001100010", // math add R2 R6 R3
+                "00000011000110000001010000000110", // branch le R3 R0 +3
+                "00000000000000001101110001000011", // math mult R2 R3
+                "00000000000000011011100001100011", // math add R3 R6
+                "11111101000110000001000000000110", // branch gt R3 R0 -3
+        });
+        processor.run();
+        assertEquals(5040, processor.getRegisters()[2].getUnsigned());
+    }
+
+    @Test
+    public void fibonacci() {
+        // fibonacci(x) {
+        //     if (x == 0) return 0
+        //     if (x == 1) return 1
+        //     return fibonacci(x-1) + fibonacci(x-2)
+        // }
+        Processor processor = new Processor();
+        // Program calls fibonacci(16) which should be 987
+        MainMemory.load(new String[] {
+                "00000000000001000000000000100001", // 0: math copy 16 R1
+                "00000000000000000011100000101101", // 1: push add R1 0 (push param onto stack)
+                "00000000000000000000000010101000", // 2: call 5 (call func)
+                "00000000000000000000000010111001", // 3: pop R5 (get result from func)
+                "00000000000000000000000000000000", // 4: halt
+                // start fib
+                "00000000000000000000001111111001", // 5: pop R31 (get return address off stack)
+                "00000000000000000000000000111001", // 6: pop R1 (get the parameter)
+                "00000000000000000100000001000001", // 7: math copy R2 1
+                "00000000000000001000000001100001", // 8: math copy R3 2
+                "00000011000010000000010000000110", // 9: branch R1 neq R0 +3
+                "00000000000000000011100000001101", // 10: push R0 (push return value onto stack)
+                "00000000000000000011101111101101", // 11: push R31 (push return address to prep return)
+                "00000000000000000000000000010000", // 12: return
+                "00000011000010001000010000000110", // 13: branch R1 neq R2 +3
+                "00000000000000000011100001001101", // 14: push R2 (push return val onto stack)
+                "00000000000000000011101111101101", // 15: push R31 (push return address to prep return)
+                "00000000000000000000000000010000", // 16: return
+                "00000000000000000011101111101101", // 17: push R31
+                "00000000000000000011100000101101", // 18: push R1
+                "00000000000010001011110000001110", // 19: push R1 sub R2 (push param)
+                "00000000000000000000000010101000", // 20: call 5 (call fib)
+                "00000000000000000000000010011001", // 21: pop R4 (get return value)
+                "00000000000000000000000000111001", // 22: pop R1 (get R1 back from the stack)
+                "00000000000000000011100010001101", // 23: push R4
+                "00000000000010001111110000001110", // 24: push R1 sub R3 (push param)
+                "00000000000000000000000010101000", // 25: call 5 (call fib)
+                "00000000000000000000000010111001", // 26: pop R5 (get return value)
+                "00000000000000000000000010011001", // 27: pop R4 (get R4 back)
+                "00000000000000000000001111111001", // 28: pop R31 (get return address back)
+                "00000000001000010111100000001110", // 29: push R4 add R5 (push result onto stack)
+                "00000000000000000011101111101101", // 30: push R31 (push return address to prep for return)
+                "00000000000000000000000000010000", // 31: return
+        });
+        processor.run();
+        assertEquals(987, processor.getRegisters()[5].getSigned());
+    }
+
     // Decrement Tests
     @Test
     public void decrement0() {

@@ -104,16 +104,19 @@ public class Processor {
         // Branch operations
         else if (!operation.getBit(29).getValue() && !operation.getBit(30).getValue() && operation.getBit(31).getValue()) {
             programCounter.copy(alu.result);
+            System.out.printf("DEBUG-- Branch to %d%n", alu.result.getSigned());
         }
         // Call operations
         else if (!operation.getBit(29).getValue() && operation.getBit(30).getValue() && !operation.getBit(31).getValue()) {
             programCounter.copy(alu.result);
+            System.out.printf("DEBUG-- Call to %d%n", alu.result.getSigned());
         }
         // Push operations
         else if (!operation.getBit(29).getValue() && operation.getBit(30).getValue() && operation.getBit(31).getValue()) {
             // Special case: 0R is unused, don't store
             if (!instructionFormat.getBit(30).getValue() && !instructionFormat.getBit(31).getValue())
                 return;
+            System.out.printf("DEBUG-- Pushing %d to memory at %d%n", alu.result.getSigned(), stackPointer.getSigned());
             MainMemory.write(stackPointer, alu.result);
             stackPointer.copy(stackPointer.decrement());
         }
@@ -143,6 +146,7 @@ public class Processor {
                 return;
             Word dest = currentInstruction.and(DEST_MASK).rightShift(5);
             writeRegister(getRegister(dest), MainMemory.read(alu.result));
+            System.out.printf("DEBUG-- Peek/Pop %d from address %d into register %d%n", MainMemory.read(alu.result).getSigned(), alu.result.getSigned(), getRegister(dest));
         }
     }
 
@@ -154,14 +158,14 @@ public class Processor {
             // Rd <- Rd op Rs1
             alu.operand1 = destination;
             alu.operand2 = source1;
-            System.out.printf("DEBUG-- %d op %d%n", destination.getUnsigned(), source1.getUnsigned());
+            //System.out.printf("DEBUG-- %d op %d%n", destination.getUnsigned(), source1.getUnsigned());
             alu.doOperation(op);
         }
         else if (instructionFormat.getBit(30).getValue()) {
             // Rd <- Rs1 op Rs2
             alu.operand1 = source1;
             alu.operand2 = source2;
-            System.out.printf("DEBUG-- %d op %d%n", source1.getUnsigned(), source2.getUnsigned());
+            //System.out.printf("DEBUG-- %d op %d%n", source1.getUnsigned(), source2.getUnsigned());
             alu.doOperation(op);
         }
         else if (instructionFormat.getBit(31).getValue()) {
@@ -315,6 +319,7 @@ public class Processor {
             // return (pc <- pop)
             stackPointer.copy(stackPointer.increment());
             programCounter.copy(MainMemory.read(stackPointer));
+            System.out.printf("DEBUG-- Return to %d%n", MainMemory.read(stackPointer).getSigned());
         }
     }
 
@@ -455,7 +460,7 @@ public class Processor {
         source2 = readRegister(getRegister(reg2));
         Word dest = currentInstruction.and(DEST_MASK).rightShift(5);
         destination = readRegister(getRegister(dest));
-        System.out.printf("DEBUG-- 3R: imm=%d rs1=R%d=%d rs2=R%d=%d rd=R%d=%d%n", immediate.getUnsigned(), reg1.getUnsigned(), source1.getUnsigned(), reg2.getUnsigned(), source2.getUnsigned(), dest.getUnsigned(), destination.getUnsigned());
+        //System.out.printf("DEBUG-- 3R: imm=%d rs1=R%d=%d rs2=R%d=%d rd=R%d=%d%n", immediate.getUnsigned(), reg1.getUnsigned(), source1.getUnsigned(), reg2.getUnsigned(), source2.getUnsigned(), dest.getUnsigned(), destination.getUnsigned());
     }
 
     private void decode2R() {
@@ -480,7 +485,7 @@ public class Processor {
         source1 = readRegister(getRegister(reg1));
         Word dest = currentInstruction.and(DEST_MASK).rightShift(5);
         destination = readRegister(getRegister(dest));
-        System.out.printf("DEBUG-- 2R: imm=%d rs1=R%d=%d rd=R%d=%d%n", immediate.getUnsigned(), reg1.getUnsigned(), source1.getUnsigned(), dest.getUnsigned(), destination.getUnsigned());
+        //System.out.printf("DEBUG-- 2R: imm=%d rs1=R%d=%d rd=R%d=%d%n", immediate.getUnsigned(), reg1.getUnsigned(), source1.getUnsigned(), dest.getUnsigned(), destination.getUnsigned());
     }
 
     private void decode1R() {
@@ -498,7 +503,7 @@ public class Processor {
         }
         Word dest = currentInstruction.and(DEST_MASK).rightShift(5);
         destination = readRegister(getRegister(dest));
-        System.out.printf("DEBUG-- 1R: imm=%d rd=R%d=%d%n", immediate.getSigned(), dest.getSigned(), destination.getSigned());
+        //System.out.printf("DEBUG-- 1R: imm=%d rd=R%d=%d%n", immediate.getSigned(), dest.getSigned(), destination.getSigned());
     }
 
     private void decode0R() {
@@ -514,7 +519,7 @@ public class Processor {
                 immediate.setBit(i, new Bit(true));
             }
         }
-        System.out.printf("DEBUG-- 0R: imm=%d%n", immediate.getUnsigned());
+        //System.out.printf("DEBUG-- 0R: imm=%d%n", immediate.getUnsigned());
     }
 
     // Ensures register 0 is always read as 0
