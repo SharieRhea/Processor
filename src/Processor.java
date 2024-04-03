@@ -344,26 +344,25 @@ public class Processor {
     }
 
     private void executePopInterruptOps(Word instructionFormat) {
-        Bit[] subtractionOp = new Bit[] { new Bit(true), new Bit(true), new Bit(true), new Bit(true) };
         Bit[] additionOp = new Bit[] { new Bit(true), new Bit(true), new Bit(true), new Bit() };
 
         if (instructionFormat.getBit(30).getValue() && instructionFormat.getBit(31).getValue()) {
-            // peek: Rd <- mem[sp - (Rs1 + imm)]
+            // peek: Rd <- mem[sp + (Rs1 + imm)]
             alu.operand1 = source1;
             alu.operand2 = immediate;
             alu.doOperation(additionOp);
             alu.operand1 = stackPointer;
             alu.operand2 = alu.result;
-            alu.doOperation(subtractionOp);
+            alu.doOperation(additionOp);
         }
         else if (instructionFormat.getBit(30).getValue()) {
-            // peek: Rd <- mem[sp - (Rs1 + Rs2)]
+            // peek: Rd <- mem[sp + (Rs1 + Rs2)]
             alu.operand1 = source1;
             alu.operand2 = source2;
             alu.doOperation(additionOp);
             alu.operand1 = stackPointer;
             alu.operand2 = alu.result;
-            alu.doOperation(subtractionOp);
+            alu.doOperation(additionOp);
         }
         else if (instructionFormat.getBit(31).getValue()) {
             // pop: Rd <- mem[sp++]

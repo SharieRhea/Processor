@@ -652,13 +652,13 @@ public class UnitTestsComputer3 {
         Processor processor = new Processor();
         MainMemory.load(new String[]{
                 "00000000111111110100000010100001", // math copy 1021 R5
-                "00000010010101111000000010110101", // store R5 2398
-                "00000000000100000000000101011011", // peek R10 R0 2
+                "00000000000000000011100010101101", // push R5
+                "00000000000010000000000011011011", // peek R6 R0 1
 
         });
         processor.run();
-        assertEquals(2398, MainMemory.read(new Word(1021)).getSigned());
-        assertEquals(2398, processor.getRegisters()[10].getSigned());
+        assertEquals(1021, MainMemory.read(new Word(1023)).getSigned());
+        assertEquals(1021, processor.getRegisters()[6].getSigned());
     }
 
     @Test
@@ -667,13 +667,14 @@ public class UnitTestsComputer3 {
         MainMemory.load(new String[]{
                 "00000000111111110100000010100001", // math copy 1021 R5
                 "00000000000000001000000010000001", // math copy 2 R4
-                "00000010010101111000000010110101", // store R5 2398
+                "00000000000000000011100010101101", // push R5
+                "00000000000000000011100010001101", // push R4
                 "00000000000000010000000101011010", // peek R10 R0 R4
 
         });
         processor.run();
-        assertEquals(2398, MainMemory.read(new Word(1021)).getSigned());
-        assertEquals(2398, processor.getRegisters()[10].getSigned());
+        assertEquals(1021, MainMemory.read(new Word(1023)).getSigned());
+        assertEquals(1021, processor.getRegisters()[10].getSigned());
     }
 
     @Test
