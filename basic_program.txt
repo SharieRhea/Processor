@@ -1,9 +1,0 @@
-math copy 1021 R5
-push R5
-peek R6 R0 1
-shift left
-shift right
-greater than
-greater than equal r10
-r18 r14 123
-r14 less than 10

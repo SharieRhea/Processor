@@ -1,20 +1,13 @@
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.LinkedList;
 
 public class Lexer {
-    private StringHandler stringHandler;
+
+    private final StringHandler stringHandler;
     private int lineNumber;
     private int position;
-    private HashMap<String, Token.TokenType> keywordsMap;
-    private LinkedList<Token> tokensList;
-
-    public static void main(String[] args) throws Exception {
-        String contents = new String(Files.readAllBytes(Paths.get(args[0])));
-        Lexer lexer = new Lexer(contents);
-        System.out.println(lexer.lex());
-    }
+    private final HashMap<String, Token.TokenType> keywordsMap;
+    private final LinkedList<Token> tokensList;
 
     public Lexer(String contents) {
         stringHandler = new StringHandler(contents);
@@ -26,7 +19,7 @@ public class Lexer {
         tokensList = new LinkedList<>();
     }
 
-    public LinkedList<Token> lex() throws Exception {
+    public LinkedList<Token> lex() throws Parser.SyntaxErrorException {
         while (!stringHandler.isDone()) {
             char character = stringHandler.peek();
 
@@ -58,11 +51,22 @@ public class Lexer {
                         if (stringHandler.getChar() == '/')
                             processComment();
                         else
-                            // todo: exception class
-                            throw new Exception("");
+                            throw new Parser.SyntaxErrorException("Invalid character '/'", lineNumber, position);
+                    }
+                    case '#' -> {
+                        stringHandler.swallow(1);
+                        processComment();
+                    }
+                    case '+' -> {
+                        stringHandler.swallow(1);
+                        tokensList.add(new Token(Token.TokenType.NUMBER, lineNumber, position, processNumber()));
+                    }
+                    case '-' -> {
+                        stringHandler.swallow(1);
+                        // For negative numbers, append the minus sign after processDigit has found the value portion
+                        tokensList.add(new Token(Token.TokenType.NUMBER, lineNumber, position, "-" + processNumber()));
                     }
                     default -> {
-                        // todo: need to handle negative numbers (and maybe also + sign)
                         // Might be a number
                         if (Character.isDigit(character))
                             tokensList.add(new Token(Token.TokenType.NUMBER, lineNumber, position, processNumber()));
@@ -80,9 +84,8 @@ public class Lexer {
                                 stringHandler.swallow(1);
                             } while (keyword == null && numberOfWords < 3);
                             if (keyword == null)
-                                // todo: exception
-                                throw new Exception("");
-                            tokensList.add(new Token(keyword, lineNumber, position));
+                                throw new Parser.SyntaxErrorException("Unrecognized keyword", lineNumber, position);
+                            tokensList.add(new Token(Token.TokenType.KEYWORD, lineNumber, position, keyword));
                         }
                     }
                 }
@@ -92,6 +95,7 @@ public class Lexer {
         return tokensList;
     }
 
+    // Build a number digit by digit until a non-digit is found
     private String processNumber() {
         StringBuilder value = new StringBuilder();
         while (!stringHandler.isDone() && Character.isDigit(stringHandler.peek())) {
@@ -101,6 +105,7 @@ public class Lexer {
         return value.toString();
     }
 
+    // Build a word character by character until a non-letter is found
     private String processWord() {
         StringBuilder value = new StringBuilder();
         while (!stringHandler.isDone() && Character.isLetter(stringHandler.peek())) {
@@ -136,15 +141,13 @@ public class Lexer {
         map.put("store", Token.TokenType.STORE);
         map.put("peek", Token.TokenType.PEEK);
         map.put("pop", Token.TokenType.POP);
-        map.put("interrupt", Token.TokenType.INTERRUPT);
         map.put("equal", Token.TokenType.EQUAL);
         map.put("not equal", Token.TokenType.NOTEQUAL);
         map.put("greater than", Token.TokenType.GREATER);
         map.put("less than", Token.TokenType.LESS);
-        map.put("greater than equal", Token.TokenType.GREATER_EQUAL);
-        map.put("less than equal", Token.TokenType.LESS_EQUAL);
-        map.put("shift", Token.TokenType.SHIFT);
-        map.put("left", Token.TokenType.LEFT);
-        map.put("right", Token.TokenType.RIGHT);
+        map.put("greater or equal", Token.TokenType.GREATER_EQUAL);
+        map.put("less or equal", Token.TokenType.LESS_EQUAL);
+        map.put("shift left", Token.TokenType.SHIFT_LEFT);
+        map.put("shift right", Token.TokenType.SHIFT_RIGHT);
     }
 }
