@@ -1,9 +1,8 @@
-math copy 1021 R5
-push R5
+copy R5 1021
+push mult R5
 peek R6 R0 1
-shift left
-shift right
-greater than
-greater than equal r10
-r18 r14 123
-r14 less than 10
+math shift left R2 R3 R5
+math shift right R3
+branch greater than R2 R31 R31
+call 1000
+store r18 r14 -1230
