@@ -15,12 +15,6 @@ public class Parser {
             return Optional.ofNullable(tokens.get(0));
         }
 
-        public Optional<Token> peek(int numberOfTokens) {
-            if (numberOfTokens > tokens.size() - 1)
-                return Optional.empty();
-            return Optional.ofNullable(tokens.get(numberOfTokens));
-        }
-
         public boolean isDone() {
             return tokens.isEmpty();
         }
@@ -102,9 +96,18 @@ public class Parser {
 
         return switch (keyword) {
             case COPY, JUMP, LOAD, STORE, PEEK, POP -> createInstruction(parseInstructionFormat(), "0000", opCode);
-            case MATH, PUSH -> {
+            case MATH -> {
                 String mathFunction = parseMathOperation(keyword);
                 yield createInstruction(parseInstructionFormat(), mathFunction, opCode);
+            }
+            case PUSH -> {
+                if (tokenHandler.peek().isPresent() && tokenHandler.peek().get().getTokenType() == Token.TokenType.KEYWORD) {
+                    String pushFunction = parseMathOperation(keyword);
+                    yield createInstruction(parseInstructionFormat(), pushFunction, opCode);
+                }
+                else
+                    // No math operation provided, assume adding 0 to push a straight register value
+                    yield createInstruction(parseInstructionFormat(), "1110", opCode);
             }
             case BRANCH -> {
                 String branchFunction = parseBooleanOperation(keyword);
@@ -204,31 +207,31 @@ public class Parser {
             throw new SyntaxErrorException("Number %d is not a valid immediate for %d bits.".formatted(number, length));
 
         boolean isNegative = false;
-            if (number < 0) {
-                number = (number * -1) -1;
-                isNegative = true;
+        if (number < 0) {
+            number = (number * -1) -1;
+            isNegative = true;
+        }
+        for (int i = length - 1; i >= 0; i--) {
+            if (number / Math.pow(2, i) >= 1) {
+                number -= (int) Math.pow(2, i);
+                stringBuilder.append("1");
             }
-            for (int i = length - 1; i >= 0; i--) {
-                if (number / Math.pow(2, i) >= 1) {
-                    number -= (int) Math.pow(2, i);
+            else
+                stringBuilder.append("0");
+        }
+        if (isNegative) {
+            // Invert string for negative
+            char[] intermediate =stringBuilder.toString().toCharArray();
+            stringBuilder = new StringBuilder();
+            for (char character: intermediate) {
+                if (character == '0')
                     stringBuilder.append("1");
-                }
                 else
                     stringBuilder.append("0");
             }
-            if (isNegative) {
-                // Invert string for negative
-                char[] intermediate =stringBuilder.toString().toCharArray();
-                stringBuilder = new StringBuilder();
-                for (char character: intermediate) {
-                    if (character == '0')
-                        stringBuilder.append("1");
-                    else
-                        stringBuilder.append("0");
-                }
-            }
+        }
 
-            return stringBuilder.toString();
+        return stringBuilder.toString();
     }
 
     private String parseMathOperation(Token.TokenType opCode) throws SyntaxErrorException {

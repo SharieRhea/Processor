@@ -3,6 +3,39 @@ import java.util.LinkedList;
 
 public class Lexer {
 
+    private static class StringHandler {
+        private int index;
+        private final String content;
+
+        public StringHandler(String fileContents) {
+            index = 0;
+            content = fileContents;
+        }
+
+        public char peek() {
+            return content.charAt(index);
+        }
+
+        public char peek(int numberOfCharacters) {
+            return content.charAt(index + numberOfCharacters);
+        }
+
+        public char getChar() {
+            char returnVal = content.charAt(index);
+            index++;
+            return returnVal;
+        }
+
+        public void swallow(int numberOfCharacters) {
+            index += numberOfCharacters;
+        }
+
+        public Boolean isDone() {
+            return index == content.length();
+        }
+    }
+
+
     private final StringHandler stringHandler;
     private int lineNumber;
     private int position;
@@ -134,6 +167,7 @@ public class Lexer {
         map.put("halt", Token.TokenType.HALT);
         map.put("branch", Token.TokenType.BRANCH);
         map.put("jump", Token.TokenType.JUMP);
+        map.put("jumpto", Token.TokenType.JUMPTO);
         map.put("call", Token.TokenType.CALL);
         map.put("push", Token.TokenType.PUSH);
         map.put("load", Token.TokenType.LOAD);
@@ -142,7 +176,7 @@ public class Lexer {
         map.put("peek", Token.TokenType.PEEK);
         map.put("pop", Token.TokenType.POP);
         map.put("equal", Token.TokenType.EQUAL);
-        map.put("not equal", Token.TokenType.NOTEQUAL);
+        map.put("notequal", Token.TokenType.NOTEQUAL);
         map.put("greater than", Token.TokenType.GREATER);
         map.put("less than", Token.TokenType.LESS);
         map.put("greater or equal", Token.TokenType.GREATER_EQUAL);
