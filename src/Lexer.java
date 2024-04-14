@@ -107,14 +107,15 @@ public class Lexer {
                         else {
                             StringBuilder phrase = new StringBuilder();
                             Token.TokenType keyword;
-                            // handle keyword phrases up to 3 words (ex. greater than equal)
+                            // handle keyword phrases up to 3 words (ex. greater or equal)
                             int numberOfWords = 0;
                             do {
                                 phrase.append(processWord()).append(" ");
                                 keyword = keywordsMap.get(phrase.toString().strip());
                                 numberOfWords++;
                                 // swallow the space between words
-                                stringHandler.swallow(1);
+                                if (stringHandler.peek() == ' ')
+                                    stringHandler.swallow(1);
                             } while (keyword == null && numberOfWords < 3);
                             if (keyword == null)
                                 throw new Parser.SyntaxErrorException("Unrecognized keyword", lineNumber, position);

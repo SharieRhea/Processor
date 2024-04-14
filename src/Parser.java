@@ -27,10 +27,6 @@ public class Parser {
             }
             return Optional.empty();
         }
-
-        public void remove() {
-            this.peek().ifPresent(token -> tokens.remove());
-        }
     }
 
     public static class SyntaxErrorException extends Exception {
@@ -73,17 +69,14 @@ public class Parser {
                     throw new SyntaxErrorException("Expected separator after statement by end of file");
             }
         }
-
         return statementsList;
     }
 
     private String processStatement() throws SyntaxErrorException {
         // a statement must start with a keyword (op code)
-        var token = tokenHandler.peek();
-        if (token.isEmpty() || token.get().getTokenType() != Token.TokenType.KEYWORD)
+        var token = tokenHandler.matchAndRemove(Token.TokenType.KEYWORD);
+        if (token.isEmpty())
             throw new SyntaxErrorException("Expected keyword by end of file");
-
-        tokenHandler.remove();
         var keyword = token.get().getKeyword();
 
         // Special Cases
@@ -95,7 +88,17 @@ public class Parser {
         String opCode = binaryMap.get(keyword);
 
         return switch (keyword) {
-            case COPY, JUMP, LOAD, STORE, PEEK, POP -> createInstruction(parseInstructionFormat(), "0000", opCode);
+            case COPY, JUMPTO, PEEK, POP -> createInstruction(parseInstructionFormat(), "0000", opCode);
+            case JUMP -> {
+                // special case, jump is a 1R instruction but takes no registers, manually set rd and check for a number
+                token = tokenHandler.matchAndRemove(Token.TokenType.NUMBER);
+                // No immediate was provided, throw
+                if (token.isEmpty())
+                    throw new SyntaxErrorException("Expected a value after JUMP");
+                immediate = getImmediate(token.get().getValue(), 18);
+                rd = "00000";
+                yield createInstruction(InstructionFormat.OneR, "0000", opCode);
+            }
             case MATH -> {
                 String mathFunction = parseMathOperation(keyword);
                 yield createInstruction(parseInstructionFormat(), mathFunction, opCode);
@@ -105,9 +108,21 @@ public class Parser {
                     String pushFunction = parseMathOperation(keyword);
                     yield createInstruction(parseInstructionFormat(), pushFunction, opCode);
                 }
-                else
-                    // No math operation provided, assume adding 0 to push a straight register value
-                    yield createInstruction(parseInstructionFormat(), "1110", opCode);
+                else {
+                    // No math operation provided, assume adding 0 to push a straight register or immediate value
+                    var register = tokenHandler.matchAndRemove(Token.TokenType.REGISTER);
+                    var number = tokenHandler.matchAndRemove(Token.TokenType.NUMBER);
+                    if (register.isEmpty() && number.isEmpty())
+                        throw new SyntaxErrorException("Expected a value or register after PUSH");
+                    if (number.isPresent())
+                        immediate = getImmediate(number.get().getValue(), 18);
+                    else immediate = "000000000000000000";
+                    if (register.isPresent())
+                        rd = getRegister(register.get().getValue());
+                    else
+                        rd = "00000";
+                    yield createInstruction(InstructionFormat.OneR, "1110", opCode);
+                }
             }
             case BRANCH -> {
                 String branchFunction = parseBooleanOperation(keyword);
@@ -122,6 +137,7 @@ public class Parser {
                 else
                     yield createInstruction(parseInstructionFormat(), "0000", opCode);
             }
+            case STORE, LOAD -> createInstruction(parseInstructionFormat(), "1110", opCode);
             default -> throw new SyntaxErrorException("%s is not a valid statement".formatted(token.get().getKeyword()), token.get().getLineNumber(), token.get().getPosition());
         };
     }
@@ -235,11 +251,9 @@ public class Parser {
     }
 
     private String parseMathOperation(Token.TokenType opCode) throws SyntaxErrorException {
-        var token = tokenHandler.peek();
-        if (token.isEmpty() || token.get().getTokenType() != Token.TokenType.KEYWORD)
+        var token = tokenHandler.matchAndRemove(Token.TokenType.KEYWORD);
+        if (token.isEmpty())
             throw new SyntaxErrorException("Expected a math operation following %s".formatted(opCode));
-
-        tokenHandler.remove();
         var keyword = token.get().getKeyword();
         switch (keyword) {
             case AND, OR, XOR, NOT, SHIFT_LEFT, SHIFT_RIGHT, ADD, SUB, MULT -> {
@@ -250,11 +264,9 @@ public class Parser {
     }
 
     private String parseBooleanOperation(Token.TokenType opCode) throws SyntaxErrorException {
-        var token = tokenHandler.peek();
-        if (token.isEmpty() || token.get().getTokenType() != Token.TokenType.KEYWORD)
+        var token = tokenHandler.matchAndRemove(Token.TokenType.KEYWORD);
+        if (token.isEmpty())
             throw new SyntaxErrorException("Expected a boolean operation following %s".formatted(opCode));
-
-        tokenHandler.remove();
         var keyword = token.get().getKeyword();
         switch (keyword) {
             case EQUAL, NOTEQUAL, LESS, GREATER_EQUAL, GREATER, LESS_EQUAL -> {
@@ -287,6 +299,8 @@ public class Parser {
         map.put(Token.TokenType.RETURN, "100");
         map.put(Token.TokenType.COPY, "000");
         map.put(Token.TokenType.HALT, "000");
+        map.put(Token.TokenType.JUMP, "001");
+        map.put(Token.TokenType.JUMPTO, "001");
 
         // math operations
         map.put(Token.TokenType.AND, "1000");
