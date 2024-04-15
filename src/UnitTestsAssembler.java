@@ -196,6 +196,34 @@ public class UnitTestsAssembler {
         Parser parser = new Parser(lexer.lex());
         var statements = parser.parse();
         ArrayList<String> checkInstructions = new ArrayList<>();
+        checkInstructions.add("00000000000000001111100010001111");
+        checkInstructions.add("00000000000000010001110010101111");
+        checkInstructions.add("00000000000110010011110100101101");
+        checkInstructions.add("00000000000000101011010101101111");
+        checkInstructions.add("00000000000000110111010111001111");
+        checkInstructions.add("00000000000000000010110001001101");
+        checkInstructions.add("00000000000001000010001000101111");
+        checkInstructions.add("00000000000001001010011001101111");
+        checkInstructions.add("00000000000111011010101010001101");
+        assertEquals(checkInstructions, statements);
+    }
+
+    @Test
+    public void testCallInstructions() throws Exception {
+        String contents = """
+                call equal R2 R3 90
+                call notequal R4 R5 R6 -20
+                call R6 88
+                call 30
+                """;
+        Lexer lexer = new Lexer(contents);
+        Parser parser = new Parser(lexer.lex());
+        var statements = parser.parse();
+        ArrayList<String> checkInstructions = new ArrayList<>();
+        checkInstructions.add("00000010110100001000000001101011");
+        checkInstructions.add("11101100001000010100010011001010");
+        checkInstructions.add("00000000000101100000000011001001");
+        checkInstructions.add("00000000000000000000001111001000");
         assertEquals(checkInstructions, statements);
     }
 
@@ -211,9 +239,9 @@ public class UnitTestsAssembler {
         Parser parser = new Parser(lexer.lex());
         var statements = parser.parse();
         ArrayList<String> checkInstructions = new ArrayList<>();
-        checkInstructions.add("00000000000110110100000000110011");
-        checkInstructions.add("00000000100111110100000010110010");
-        checkInstructions.add("11111111111010011000001000110001");
+        checkInstructions.add("00000000000110110111100000110011");
+        checkInstructions.add("00000000100111110111100010110010");
+        checkInstructions.add("11111111111010011011101000110001");
         checkInstructions.add("00000000000000000000000000010000");
         assertEquals(checkInstructions, statements);
     }
@@ -229,9 +257,9 @@ public class UnitTestsAssembler {
         Parser parser = new Parser(lexer.lex());
         var statements = parser.parse();
         ArrayList<String> checkInstructions = new ArrayList<>();
-        checkInstructions.add("00001000101101110000000001110111");
-        checkInstructions.add("00000000010001001000001100110110");
-        checkInstructions.add("11110010111000111000000100110101");
+        checkInstructions.add("00001000101101110011100001110111");
+        checkInstructions.add("00000000010001001011101100110110");
+        checkInstructions.add("11110010111000111011100100110101");
         assertEquals(checkInstructions, statements);
     }
 
