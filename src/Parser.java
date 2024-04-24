@@ -317,7 +317,7 @@ public class Parser {
         map.put(Token.TokenType.EQUAL, "0000");
         map.put(Token.TokenType.NOTEQUAL, "0001");
         map.put(Token.TokenType.LESS, "0010");
-        map.put(Token.TokenType.GREATER_EQUAL, "0100");
+        map.put(Token.TokenType.GREATER_EQUAL, "0011");
         map.put(Token.TokenType.GREATER, "0100");
         map.put(Token.TokenType.LESS_EQUAL, "0101");
     }

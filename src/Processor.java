@@ -18,6 +18,8 @@ public class Processor {
     private final Word FUNCTION_MASK = new Word();
     private final Word OPERATION_MASK = new Word();
 
+    private int currentClockCycle = 0;
+
     public Processor() {
         // stackPointer should begin at 1023.
         stackPointer.setBit(21, new Bit (true));
@@ -48,6 +50,7 @@ public class Processor {
             execute();
             store();
         }
+        System.out.println("Total clock cycles: " + currentClockCycle);
     }
 
     private void fetch() {
