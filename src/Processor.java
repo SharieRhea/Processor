@@ -18,7 +18,7 @@ public class Processor {
     private final Word FUNCTION_MASK = new Word();
     private final Word OPERATION_MASK = new Word();
 
-    private int currentClockCycle = 0;
+    private static int currentClockCycle = 0;
 
     public Processor() {
         // stackPointer should begin at 1023.
@@ -54,7 +54,9 @@ public class Processor {
     }
 
     private void fetch() {
-        currentInstruction = MainMemory.read(programCounter);
+        // NO CACHE: currentInstruction = MainMemory.read(programCounter);
+        // NO CACHE: currentClockCycle += 300;
+        currentInstruction = L1.read(programCounter);
         programCounter = programCounter.increment();
     }
 
@@ -116,7 +118,9 @@ public class Processor {
             // Special case: 0R is unused, don't store
             if (!instructionFormat.getBit(30).getValue() && !instructionFormat.getBit(31).getValue())
                 return;
-            MainMemory.write(stackPointer, alu.result);
+            L2.write(stackPointer, alu.result);
+            // MainMemory.write(stackPointer, alu.result); // note: no L2 cache
+            // currentClockCycle += 300; // note: no L2 cache
             stackPointer.copy(stackPointer.decrement());
         }
         // Load operations
@@ -125,16 +129,25 @@ public class Processor {
             if (!instructionFormat.getBit(30).getValue() && !instructionFormat.getBit(31).getValue())
                 return;
             Word dest = currentInstruction.and(DEST_MASK).rightShift(5);
-            writeRegister(getRegister(dest), MainMemory.read(alu.result));
+            // writeRegister(getRegister(dest), MainMemory.read(alu.result)); // note: no L2 cache
+            // currentClockCycle += 300; // note: no L2 cache
+            writeRegister(getRegister(dest), L2.read(alu.result));
         }
         // Store operations
         else if (operation.getBit(29).getValue() && !operation.getBit(30).getValue() && operation.getBit(31).getValue()) {
-            if (instructionFormat.getBit(30).getValue() && instructionFormat.getBit(31).getValue())
-                MainMemory.write(alu.result, source1);
-            else if (instructionFormat.getBit(30).getValue())
-                MainMemory.write(alu.result, source2);
-            else if (instructionFormat.getBit(31).getValue())
-                MainMemory.write(destination, immediate);
+            if (instructionFormat.getBit(30).getValue() && instructionFormat.getBit(31).getValue()) {
+                L2.write(alu.result, source1);
+                // MainMemory.write(alu.result, source1); // note: no L2 cache
+            }
+            else if (instructionFormat.getBit(30).getValue()) {
+                L2.write(alu.result, source2);
+                // MainMemory.write(alu.result, source2); // note: no L2 cache
+            }
+            else if (instructionFormat.getBit(31).getValue()) {
+                L2.write(destination, immediate);
+                // MainMemory.write(destination, immediate); // note: no L2 cache
+            }
+            // currentClockCycle += 300; // note: no L2 cache
             // 0R is unused, do nothing
         }
         // Peek/Pop operations
@@ -143,7 +156,9 @@ public class Processor {
             if (!instructionFormat.getBit(30).getValue() && !instructionFormat.getBit(31).getValue())
                 return;
             Word dest = currentInstruction.and(DEST_MASK).rightShift(5);
-            writeRegister(getRegister(dest), MainMemory.read(alu.result));
+            // writeRegister(getRegister(dest), MainMemory.read(alu.result)); // note: no L2 cache
+            // currentClockCycle += 300; // note: no L2 cache
+            writeRegister(getRegister(dest), L2.read(alu.result));
         }
     }
 
@@ -172,8 +187,13 @@ public class Processor {
             halted.set(true);
             return;
         }
-
         destination.copy(alu.result);
+
+        // multiplication is 10 clock cycles, everything else is 2
+        if (!op[0].getValue() && op[1].getValue() && op[2].getValue() && op[3].getValue())
+            currentClockCycle += 10;
+        else
+            currentClockCycle += 2;
     }
 
     private void executeBranchOps(Word instructionFormat) {
@@ -222,7 +242,8 @@ public class Processor {
         if (instructionFormat.getBit(30).getValue() && instructionFormat.getBit(31).getValue()) {
             // pc <- Rs1 BOP Rd ? push pc; pc + imm : pc
             if (performBooleanOp(op, source1, destination).getValue()) {
-                MainMemory.write(stackPointer, programCounter);
+                L2.write(stackPointer, programCounter);
+                // MainMemory.write(stackPointer, programCounter); // note: no L2 cache
                 stackPointer.copy(stackPointer.decrement());
 
                 alu.operand1 = programCounter;
@@ -235,7 +256,8 @@ public class Processor {
         else if (instructionFormat.getBit(30).getValue()) {
             // pc <- Rs1 bop Rs2 ? push pc; Rd + imm : pc
             if (performBooleanOp(op, source1, source2).getValue()) {
-                MainMemory.write(stackPointer, programCounter);
+                L2.write(stackPointer, programCounter);
+                // MainMemory.write(stackPointer, programCounter); // note: no L2 cache
                 stackPointer.copy(stackPointer.decrement());
 
                 alu.operand1 = destination;
@@ -247,7 +269,8 @@ public class Processor {
         }
         else if (instructionFormat.getBit(31).getValue()) {
             // push pc; pc <- Rd + imm
-            MainMemory.write(stackPointer, programCounter);
+            L2.write(stackPointer, programCounter);
+            // MainMemory.write(stackPointer, programCounter); // note: no L2 cache
             stackPointer.copy(stackPointer.decrement());
 
             alu.operand1 = destination;
@@ -256,11 +279,13 @@ public class Processor {
         }
         else {
             // push pc; pc <- imm
-            MainMemory.write(stackPointer, programCounter);
+            L2.write(stackPointer, programCounter);
+            // MainMemory.write(stackPointer, programCounter); // note: no L2 cache
             stackPointer.copy(stackPointer.decrement());
 
             alu.result = immediate;
         }
+        // currentClockCycle += 300; // note: no L2 cache
     }
 
     private void executePushOps(Word instructionFormat) {
@@ -313,7 +338,9 @@ public class Processor {
         else {
             // return (pc <- pop)
             stackPointer.copy(stackPointer.increment());
-            programCounter.copy(MainMemory.read(stackPointer));
+            programCounter.copy(L2.read(stackPointer));
+            // currentClockCycle += 300; // note: no L2 cache
+            //programCounter.copy(MainMemory.read(stackPointer)); // note: no L2 cache
         }
     }
 
@@ -587,6 +614,14 @@ public class Processor {
                 }
             }
         }
+    }
+
+    public static void addClockCycles(int cycles) {
+        currentClockCycle += cycles;
+    }
+
+    public static int getCurrentClockCycle() {
+        return currentClockCycle;
     }
 
     // Used for testing

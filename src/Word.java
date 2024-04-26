@@ -168,10 +168,11 @@ public class Word {
 
     @Override
     public String toString() {
-        String[] bits = new String[32];
+        return getUnsigned() + "";
+        /*String[] bits = new String[32];
         for (int i = 0; i < 32; i++) {
             bits[i] = array[i].toString();
         }
-        return String.join(", ", bits);
+        return String.join(", ", bits);*/
     }
 }
